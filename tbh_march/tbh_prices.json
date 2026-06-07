@@ -574,7 +574,7 @@
     "volume": 123842,
     "median": ""
   },
-  "_fetched_at": "2026-06-08T01:46:52+07:00",
+  "_fetched_at": "2026-06-08T02:24:21+07:00",
   "303011": {
     "lowest": "฿1.37",
     "volume": 803,
@@ -3783,6 +3783,1456 @@
   "636071": {
     "lowest": "฿559.15",
     "volume": 5,
+    "median": ""
+  },
+  "190004": {
+    "lowest": "฿5.74",
+    "volume": 134173,
+    "median": ""
+  },
+  "190003": {
+    "lowest": "฿2.53",
+    "volume": 211674,
+    "median": ""
+  },
+  "112004": {
+    "lowest": "฿8.29",
+    "volume": 20479,
+    "median": ""
+  },
+  "190002": {
+    "lowest": "฿1.91",
+    "volume": 223802,
+    "median": ""
+  },
+  "190001": {
+    "lowest": "฿1.29",
+    "volume": 249332,
+    "median": ""
+  },
+  "112005": {
+    "lowest": "฿6.10",
+    "volume": 19081,
+    "median": ""
+  },
+  "143002": {
+    "lowest": "฿3.36",
+    "volume": 17334,
+    "median": ""
+  },
+  "114003": {
+    "lowest": "฿18.11",
+    "volume": 1736,
+    "median": ""
+  },
+  "144002": {
+    "lowest": "฿5.96",
+    "volume": 590,
+    "median": ""
+  },
+  "143001": {
+    "lowest": "฿3.13",
+    "volume": 22130,
+    "median": ""
+  },
+  "112001": {
+    "lowest": "฿5.09",
+    "volume": 24923,
+    "median": ""
+  },
+  "140002": {
+    "lowest": "฿1.82",
+    "volume": 222028,
+    "median": ""
+  },
+  "124003": {
+    "lowest": "฿39.27",
+    "volume": 764,
+    "median": ""
+  },
+  "145002": {
+    "lowest": "฿11.30",
+    "volume": 329,
+    "median": ""
+  },
+  "141001": {
+    "lowest": "฿1.91",
+    "volume": 221701,
+    "median": ""
+  },
+  "114001": {
+    "lowest": "฿9.63",
+    "volume": 3798,
+    "median": ""
+  },
+  "314141": {
+    "lowest": "฿59.04",
+    "volume": 175,
+    "median": ""
+  },
+  "141002": {
+    "lowest": "฿1.44",
+    "volume": 220873,
+    "median": ""
+  },
+  "314171": {
+    "lowest": "฿68.50",
+    "volume": 143,
+    "median": ""
+  },
+  "110004": {
+    "lowest": "฿1.90",
+    "volume": 141426,
+    "median": ""
+  },
+  "114002": {
+    "lowest": "฿9.28",
+    "volume": 1726,
+    "median": ""
+  },
+  "315141": {
+    "lowest": "฿623.37",
+    "volume": 93,
+    "median": ""
+  },
+  "535041": {
+    "lowest": "฿487.27",
+    "volume": 57,
+    "median": ""
+  },
+  "124001": {
+    "lowest": "฿22.35",
+    "volume": 943,
+    "median": ""
+  },
+  "125003": {
+    "lowest": "฿26.59",
+    "volume": 420,
+    "median": ""
+  },
+  "113002": {
+    "lowest": "฿3.12",
+    "volume": 10354,
+    "median": ""
+  },
+  "111002": {
+    "lowest": "฿1.65",
+    "volume": 106187,
+    "median": ""
+  },
+  "144001": {
+    "lowest": "฿3.29",
+    "volume": 1464,
+    "median": ""
+  },
+  "142002": {
+    "lowest": "฿1.32",
+    "volume": 91563,
+    "median": ""
+  },
+  "132001": {
+    "lowest": "฿21.18",
+    "volume": 298,
+    "median": ""
+  },
+  "160005": {
+    "lowest": "฿346.56",
+    "volume": 29,
+    "median": ""
+  },
+  "314051": {
+    "lowest": "฿18.03",
+    "volume": 624,
+    "median": ""
+  },
+  "110001": {
+    "lowest": "฿1.29",
+    "volume": 159648,
+    "median": ""
+  },
+  "115003": {
+    "lowest": "฿13.28",
+    "volume": 1919,
+    "median": ""
+  },
+  "110003": {
+    "lowest": "฿1.28",
+    "volume": 148381,
+    "median": ""
+  },
+  "123001": {
+    "lowest": "฿5.74",
+    "volume": 1396,
+    "median": ""
+  },
+  "314111": {
+    "lowest": "฿23.57",
+    "volume": 302,
+    "median": ""
+  },
+  "142001": {
+    "lowest": "฿1.27",
+    "volume": 96683,
+    "median": ""
+  },
+  "145001": {
+    "lowest": "฿2.45",
+    "volume": 1718,
+    "median": ""
+  },
+  "140004": {
+    "lowest": "฿0.99",
+    "volume": 362307,
+    "median": ""
+  },
+  "523171": {
+    "lowest": "฿3.75",
+    "volume": 5188,
+    "median": ""
+  },
+  "524171": {
+    "lowest": "฿21.98",
+    "volume": 253,
+    "median": ""
+  },
+  "160004": {
+    "lowest": "฿101.39",
+    "volume": 266,
+    "median": ""
+  },
+  "113003": {
+    "lowest": "฿2.53",
+    "volume": 12701,
+    "median": ""
+  },
+  "125001": {
+    "lowest": "฿23.13",
+    "volume": 208,
+    "median": ""
+  },
+  "514111": {
+    "lowest": "฿16.23",
+    "volume": 428,
+    "median": ""
+  },
+  "113004": {
+    "lowest": "฿1.87",
+    "volume": 14659,
+    "median": ""
+  },
+  "113001": {
+    "lowest": "฿2.53",
+    "volume": 12309,
+    "median": ""
+  },
+  "315091": {
+    "lowest": "฿69.87",
+    "volume": 111,
+    "median": ""
+  },
+  "413051": {
+    "lowest": "฿18.46",
+    "volume": 759,
+    "median": ""
+  },
+  "160001": {
+    "lowest": "฿2.78",
+    "volume": 4003,
+    "median": ""
+  },
+  "314071": {
+    "lowest": "฿15.46",
+    "volume": 495,
+    "median": ""
+  },
+  "115001": {
+    "lowest": "฿7.93",
+    "volume": 1300,
+    "median": ""
+  },
+  "316171": {
+    "lowest": "฿3,040.55",
+    "volume": 9,
+    "median": ""
+  },
+  "111001": {
+    "lowest": "฿1.24",
+    "volume": 106196,
+    "median": ""
+  },
+  "140003": {
+    "lowest": "฿0.99",
+    "volume": 423661,
+    "median": ""
+  },
+  "160003": {
+    "lowest": "฿32.05",
+    "volume": 445,
+    "median": ""
+  },
+  "135001": {
+    "lowest": "฿184.00",
+    "volume": 29,
+    "median": ""
+  },
+  "160002": {
+    "lowest": "฿13.19",
+    "volume": 330,
+    "median": ""
+  },
+  "524141": {
+    "lowest": "฿17.29",
+    "volume": 377,
+    "median": ""
+  },
+  "514051": {
+    "lowest": "฿13.19",
+    "volume": 406,
+    "median": ""
+  },
+  "315071": {
+    "lowest": "฿134.83",
+    "volume": 61,
+    "median": ""
+  },
+  "503171": {
+    "lowest": "฿3.59",
+    "volume": 4677,
+    "median": ""
+  },
+  "133001": {
+    "lowest": "฿29.45",
+    "volume": 457,
+    "median": ""
+  },
+  "514141": {
+    "lowest": "฿15.12",
+    "volume": 441,
+    "median": ""
+  },
+  "116004": {
+    "lowest": "฿317.43",
+    "volume": 53,
+    "median": ""
+  },
+  "313171": {
+    "lowest": "฿4.88",
+    "volume": 4250,
+    "median": ""
+  },
+  "324171": {
+    "lowest": "฿12.91",
+    "volume": 417,
+    "median": ""
+  },
+  "315111": {
+    "lowest": "฿224.98",
+    "volume": 61,
+    "median": ""
+  },
+  "433051": {
+    "lowest": "฿14.35",
+    "volume": 1017,
+    "median": ""
+  },
+  "305091": {
+    "lowest": "฿29.28",
+    "volume": 79,
+    "median": ""
+  },
+  "514091": {
+    "lowest": "฿6.27",
+    "volume": 477,
+    "median": ""
+  },
+  "303111": {
+    "lowest": "฿3.62",
+    "volume": 2472,
+    "median": ""
+  },
+  "514171": {
+    "lowest": "฿12.94",
+    "volume": 485,
+    "median": ""
+  },
+  "303141": {
+    "lowest": "฿2.96",
+    "volume": 4352,
+    "median": ""
+  },
+  "414171": {
+    "lowest": "฿254.00",
+    "volume": 46,
+    "median": ""
+  },
+  "515141": {
+    "lowest": "฿94.59",
+    "volume": 177,
+    "median": ""
+  },
+  "303171": {
+    "lowest": "฿3.81",
+    "volume": 3970,
+    "median": ""
+  },
+  "414141": {
+    "lowest": "฿180.63",
+    "volume": 61,
+    "median": ""
+  },
+  "314091": {
+    "lowest": "฿7.08",
+    "volume": 536,
+    "median": ""
+  },
+  "534111": {
+    "lowest": "฿12.73",
+    "volume": 356,
+    "median": ""
+  },
+  "334141": {
+    "lowest": "฿11.42",
+    "volume": 296,
+    "median": ""
+  },
+  "304091": {
+    "lowest": "฿7.29",
+    "volume": 299,
+    "median": ""
+  },
+  "533111": {
+    "lowest": "฿3.29",
+    "volume": 3715,
+    "median": ""
+  },
+  "333111": {
+    "lowest": "฿3.77",
+    "volume": 2703,
+    "median": ""
+  },
+  "413071": {
+    "lowest": "฿15.06",
+    "volume": 153,
+    "median": ""
+  },
+  "513171": {
+    "lowest": "฿3.31",
+    "volume": 3587,
+    "median": ""
+  },
+  "513111": {
+    "lowest": "฿3.53",
+    "volume": 3092,
+    "median": ""
+  },
+  "413171": {
+    "lowest": "฿27.31",
+    "volume": 141,
+    "median": ""
+  },
+  "534171": {
+    "lowest": "฿12.81",
+    "volume": 613,
+    "median": ""
+  },
+  "111004": {
+    "lowest": "฿0.99",
+    "volume": 137343,
+    "median": ""
+  },
+  "304141": {
+    "lowest": "฿10.55",
+    "volume": 276,
+    "median": ""
+  },
+  "313111": {
+    "lowest": "฿3.74",
+    "volume": 3181,
+    "median": ""
+  },
+  "323171": {
+    "lowest": "฿4.15",
+    "volume": 4429,
+    "median": ""
+  },
+  "413111": {
+    "lowest": "฿19.98",
+    "volume": 175,
+    "median": ""
+  },
+  "323111": {
+    "lowest": "฿3.94",
+    "volume": 2988,
+    "median": ""
+  },
+  "504171": {
+    "lowest": "฿12.49",
+    "volume": 676,
+    "median": ""
+  },
+  "524091": {
+    "lowest": "฿5.39",
+    "volume": 454,
+    "median": ""
+  },
+  "115004": {
+    "lowest": "฿3.87",
+    "volume": 1949,
+    "median": ""
+  },
+  "413141": {
+    "lowest": "฿24.93",
+    "volume": 116,
+    "median": ""
+  },
+  "504091": {
+    "lowest": "฿5.72",
+    "volume": 487,
+    "median": ""
+  },
+  "514071": {
+    "lowest": "฿8.99",
+    "volume": 531,
+    "median": ""
+  },
+  "413041": {
+    "lowest": "฿10.00",
+    "volume": 1162,
+    "median": ""
+  },
+  "323141": {
+    "lowest": "฿3.34",
+    "volume": 4872,
+    "median": ""
+  },
+  "504071": {
+    "lowest": "฿8.48",
+    "volume": 347,
+    "median": ""
+  },
+  "423171": {
+    "lowest": "฿14.31",
+    "volume": 159,
+    "median": ""
+  },
+  "333171": {
+    "lowest": "฿3.77",
+    "volume": 3353,
+    "median": ""
+  },
+  "533171": {
+    "lowest": "฿3.16",
+    "volume": 4614,
+    "median": ""
+  },
+  "534091": {
+    "lowest": "฿5.11",
+    "volume": 424,
+    "median": ""
+  },
+  "524071": {
+    "lowest": "฿7.16",
+    "volume": 430,
+    "median": ""
+  },
+  "110005": {
+    "lowest": "฿0.99",
+    "volume": 235203,
+    "median": ""
+  },
+  "123002": {
+    "lowest": "฿3.12",
+    "volume": 2819,
+    "median": ""
+  },
+  "324091": {
+    "lowest": "฿6.46",
+    "volume": 421,
+    "median": ""
+  },
+  "414071": {
+    "lowest": "฿44.11",
+    "volume": 133,
+    "median": ""
+  },
+  "304171": {
+    "lowest": "฿12.91",
+    "volume": 283,
+    "median": ""
+  },
+  "414091": {
+    "lowest": "฿26.64",
+    "volume": 158,
+    "median": ""
+  },
+  "123003": {
+    "lowest": "฿1.98",
+    "volume": 2947,
+    "median": ""
+  },
+  "504111": {
+    "lowest": "฿12.83",
+    "volume": 236,
+    "median": ""
+  },
+  "534141": {
+    "lowest": "฿10.20",
+    "volume": 455,
+    "median": ""
+  },
+  "334171": {
+    "lowest": "฿13.95",
+    "volume": 428,
+    "median": ""
+  },
+  "116003": {
+    "lowest": "฿141.17",
+    "volume": 50,
+    "median": ""
+  },
+  "503111": {
+    "lowest": "฿3.29",
+    "volume": 3864,
+    "median": ""
+  },
+  "125002": {
+    "lowest": "฿11.76",
+    "volume": 738,
+    "median": ""
+  },
+  "505111": {
+    "lowest": "฿70.81",
+    "volume": 100,
+    "median": ""
+  },
+  "524111": {
+    "lowest": "฿13.87",
+    "volume": 233,
+    "median": ""
+  },
+  "334091": {
+    "lowest": "฿5.67",
+    "volume": 445,
+    "median": ""
+  },
+  "134001": {
+    "lowest": "฿49.58",
+    "volume": 276,
+    "median": ""
+  },
+  "414111": {
+    "lowest": "฿70.90",
+    "volume": 93,
+    "median": ""
+  },
+  "533141": {
+    "lowest": "฿3.15",
+    "volume": 5452,
+    "median": ""
+  },
+  "504051": {
+    "lowest": "฿7.54",
+    "volume": 331,
+    "median": ""
+  },
+  "304111": {
+    "lowest": "฿10.12",
+    "volume": 205,
+    "median": ""
+  },
+  "523111": {
+    "lowest": "฿3.77",
+    "volume": 3965,
+    "median": ""
+  },
+  "504141": {
+    "lowest": "฿9.40",
+    "volume": 403,
+    "median": ""
+  },
+  "111003": {
+    "lowest": "฿0.99",
+    "volume": 166234,
+    "median": ""
+  },
+  "413031": {
+    "lowest": "฿16.23",
+    "volume": 160,
+    "median": ""
+  },
+  "613071": {
+    "lowest": "฿35.45",
+    "volume": 112,
+    "median": ""
+  },
+  "534051": {
+    "lowest": "฿8.44",
+    "volume": 317,
+    "median": ""
+  },
+  "115002": {
+    "lowest": "฿3.42",
+    "volume": 2060,
+    "median": ""
+  },
+  "433041": {
+    "lowest": "฿8.30",
+    "volume": 1223,
+    "median": ""
+  },
+  "515091": {
+    "lowest": "฿28.12",
+    "volume": 109,
+    "median": ""
+  },
+  "534071": {
+    "lowest": "฿7.86",
+    "volume": 340,
+    "median": ""
+  },
+  "160006": {
+    "lowest": "฿941.21",
+    "volume": 51,
+    "median": ""
+  },
+  "505091": {
+    "lowest": "฿40.52",
+    "volume": 185,
+    "median": ""
+  },
+  "603091": {
+    "lowest": "฿61.42",
+    "volume": 52,
+    "median": ""
+  },
+  "314041": {
+    "lowest": "฿7.76",
+    "volume": 588,
+    "median": ""
+  },
+  "130001": {
+    "lowest": "฿2.99",
+    "volume": 2067,
+    "median": ""
+  },
+  "603071": {
+    "lowest": "฿48.10",
+    "volume": 82,
+    "median": ""
+  },
+  "415091": {
+    "lowest": "฿198.50",
+    "volume": 46,
+    "median": ""
+  },
+  "305111": {
+    "lowest": "฿42.45",
+    "volume": 65,
+    "median": ""
+  },
+  "313071": {
+    "lowest": "฿1.88",
+    "volume": 6933,
+    "median": ""
+  },
+  "304071": {
+    "lowest": "฿6.47",
+    "volume": 393,
+    "median": ""
+  },
+  "603111": {
+    "lowest": "฿85.41",
+    "volume": 52,
+    "median": ""
+  },
+  "110002": {
+    "lowest": "฿0.99",
+    "volume": 258039,
+    "median": ""
+  },
+  "324111": {
+    "lowest": "฿11.45",
+    "volume": 243,
+    "median": ""
+  },
+  "524051": {
+    "lowest": "฿6.83",
+    "volume": 356,
+    "median": ""
+  },
+  "334051": {
+    "lowest": "฿7.54",
+    "volume": 602,
+    "median": ""
+  },
+  "121002": {
+    "lowest": "฿1.29",
+    "volume": 25692,
+    "median": ""
+  },
+  "513141": {
+    "lowest": "฿3.15",
+    "volume": 5543,
+    "median": ""
+  },
+  "324071": {
+    "lowest": "฿5.02",
+    "volume": 584,
+    "median": ""
+  },
+  "334111": {
+    "lowest": "฿12.02",
+    "volume": 337,
+    "median": ""
+  },
+  "623041": {
+    "lowest": "฿69.03",
+    "volume": 45,
+    "median": ""
+  },
+  "433111": {
+    "lowest": "฿12.70",
+    "volume": 170,
+    "median": ""
+  },
+  "313091": {
+    "lowest": "฿2.22",
+    "volume": 4324,
+    "median": ""
+  },
+  "313141": {
+    "lowest": "฿3.26",
+    "volume": 4662,
+    "median": ""
+  },
+  "503141": {
+    "lowest": "฿3.15",
+    "volume": 5891,
+    "median": ""
+  },
+  "423051": {
+    "lowest": "฿5.78",
+    "volume": 1062,
+    "median": ""
+  },
+  "324051": {
+    "lowest": "฿5.74",
+    "volume": 659,
+    "median": ""
+  },
+  "114004": {
+    "lowest": "฿2.30",
+    "volume": 3383,
+    "median": ""
+  },
+  "525141": {
+    "lowest": "฿72.15",
+    "volume": 113,
+    "median": ""
+  },
+  "514041": {
+    "lowest": "฿7.16",
+    "volume": 314,
+    "median": ""
+  },
+  "613051": {
+    "lowest": "฿37.78",
+    "volume": 82,
+    "median": ""
+  },
+  "324141": {
+    "lowest": "฿11.06",
+    "volume": 293,
+    "median": ""
+  },
+  "124002": {
+    "lowest": "฿2.30",
+    "volume": 1411,
+    "median": ""
+  },
+  "434091": {
+    "lowest": "฿15.56",
+    "volume": 177,
+    "median": ""
+  },
+  "514031": {
+    "lowest": "฿7.11",
+    "volume": 159,
+    "median": ""
+  },
+  "323091": {
+    "lowest": "฿2.10",
+    "volume": 3827,
+    "median": ""
+  },
+  "533091": {
+    "lowest": "฿2.30",
+    "volume": 5309,
+    "median": ""
+  },
+  "433071": {
+    "lowest": "฿8.14",
+    "volume": 408,
+    "median": ""
+  },
+  "315051": {
+    "lowest": "฿94.25",
+    "volume": 50,
+    "median": ""
+  },
+  "333091": {
+    "lowest": "฿1.89",
+    "volume": 3506,
+    "median": ""
+  },
+  "334071": {
+    "lowest": "฿6.44",
+    "volume": 616,
+    "median": ""
+  },
+  "523071": {
+    "lowest": "฿1.89",
+    "volume": 6730,
+    "median": ""
+  },
+  "523091": {
+    "lowest": "฿2.35",
+    "volume": 5242,
+    "median": ""
+  },
+  "603051": {
+    "lowest": "฿50.60",
+    "volume": 61,
+    "median": ""
+  },
+  "303051": {
+    "lowest": "฿1.29",
+    "volume": 18861,
+    "median": ""
+  },
+  "112002": {
+    "lowest": "฿0.99",
+    "volume": 48261,
+    "median": ""
+  },
+  "124004": {
+    "lowest": "฿5.73",
+    "volume": 1499,
+    "median": ""
+  },
+  "303091": {
+    "lowest": "฿2.10",
+    "volume": 4012,
+    "median": ""
+  },
+  "414041": {
+    "lowest": "฿35.71",
+    "volume": 97,
+    "median": ""
+  },
+  "623071": {
+    "lowest": "฿20.59",
+    "volume": 80,
+    "median": ""
+  },
+  "623051": {
+    "lowest": "฿38.34",
+    "volume": 57,
+    "median": ""
+  },
+  "304051": {
+    "lowest": "฿5.11",
+    "volume": 530,
+    "median": ""
+  },
+  "335091": {
+    "lowest": "฿24.03",
+    "volume": 111,
+    "median": ""
+  },
+  "123004": {
+    "lowest": "฿2.20",
+    "volume": 3305,
+    "median": ""
+  },
+  "535091": {
+    "lowest": "฿24.46",
+    "volume": 93,
+    "median": ""
+  },
+  "523141": {
+    "lowest": "฿3.29",
+    "volume": 5772,
+    "median": ""
+  },
+  "334031": {
+    "lowest": "฿5.22",
+    "volume": 276,
+    "median": ""
+  },
+  "413091": {
+    "lowest": "฿6.47",
+    "volume": 293,
+    "median": ""
+  },
+  "334041": {
+    "lowest": "฿4.74",
+    "volume": 475,
+    "median": ""
+  },
+  "303071": {
+    "lowest": "฿1.77",
+    "volume": 7030,
+    "median": ""
+  },
+  "414051": {
+    "lowest": "฿61.42",
+    "volume": 113,
+    "median": ""
+  },
+  "515051": {
+    "lowest": "฿48.10",
+    "volume": 62,
+    "median": ""
+  },
+  "525091": {
+    "lowest": "฿22.14",
+    "volume": 87,
+    "median": ""
+  },
+  "534041": {
+    "lowest": "฿4.56",
+    "volume": 396,
+    "median": ""
+  },
+  "333141": {
+    "lowest": "฿3.02",
+    "volume": 4892,
+    "median": ""
+  },
+  "535141": {
+    "lowest": "฿65.11",
+    "volume": 156,
+    "median": ""
+  },
+  "624071": {
+    "lowest": "฿94.12",
+    "volume": 46,
+    "median": ""
+  },
+  "503051": {
+    "lowest": "฿1.43",
+    "volume": 20089,
+    "median": ""
+  },
+  "603141": {
+    "lowest": "฿40.62",
+    "volume": 43,
+    "median": ""
+  },
+  "131001": {
+    "lowest": "฿7.83",
+    "volume": 359,
+    "median": ""
+  },
+  "305071": {
+    "lowest": "฿20.65",
+    "volume": 85,
+    "median": ""
+  },
+  "504031": {
+    "lowest": "฿4.66",
+    "volume": 140,
+    "median": ""
+  },
+  "515071": {
+    "lowest": "฿53.47",
+    "volume": 75,
+    "median": ""
+  },
+  "324041": {
+    "lowest": "฿5.77",
+    "volume": 559,
+    "median": ""
+  },
+  "603031": {
+    "lowest": "฿52.02",
+    "volume": 24,
+    "median": ""
+  },
+  "524031": {
+    "lowest": "฿5.28",
+    "volume": 142,
+    "median": ""
+  },
+  "524041": {
+    "lowest": "฿6.41",
+    "volume": 487,
+    "median": ""
+  },
+  "146002": {
+    "lowest": "฿40.95",
+    "volume": 252,
+    "median": ""
+  },
+  "633141": {
+    "lowest": "฿43.06",
+    "volume": 63,
+    "median": ""
+  },
+  "314031": {
+    "lowest": "฿7.86",
+    "volume": 266,
+    "median": ""
+  },
+  "613091": {
+    "lowest": "฿20.67",
+    "volume": 87,
+    "median": ""
+  },
+  "504041": {
+    "lowest": "฿6.40",
+    "volume": 324,
+    "median": ""
+  },
+  "525111": {
+    "lowest": "฿88.55",
+    "volume": 56,
+    "median": ""
+  },
+  "116001": {
+    "lowest": "฿65.41",
+    "volume": 198,
+    "median": ""
+  },
+  "434071": {
+    "lowest": "฿26.31",
+    "volume": 103,
+    "median": ""
+  },
+  "335111": {
+    "lowest": "฿66.40",
+    "volume": 99,
+    "median": ""
+  },
+  "523051": {
+    "lowest": "฿1.32",
+    "volume": 19755,
+    "median": ""
+  },
+  "325141": {
+    "lowest": "฿59.20",
+    "volume": 91,
+    "median": ""
+  },
+  "633091": {
+    "lowest": "฿13.17",
+    "volume": 67,
+    "median": ""
+  },
+  "623031": {
+    "lowest": "฿25.26",
+    "volume": 58,
+    "median": ""
+  },
+  "325091": {
+    "lowest": "฿24.03",
+    "volume": 106,
+    "median": ""
+  },
+  "323051": {
+    "lowest": "฿1.28",
+    "volume": 20656,
+    "median": ""
+  },
+  "305171": {
+    "lowest": "฿76.79",
+    "volume": 119,
+    "median": ""
+  },
+  "333051": {
+    "lowest": "฿1.29",
+    "volume": 18998,
+    "median": ""
+  },
+  "434041": {
+    "lowest": "฿27.85",
+    "volume": 126,
+    "median": ""
+  },
+  "403171": {
+    "lowest": "฿8.30",
+    "volume": 202,
+    "median": ""
+  },
+  "423041": {
+    "lowest": "฿4.00",
+    "volume": 1723,
+    "median": ""
+  },
+  "613141": {
+    "lowest": "฿40.95",
+    "volume": 54,
+    "median": ""
+  },
+  "304041": {
+    "lowest": "฿4.40",
+    "volume": 489,
+    "median": ""
+  },
+  "613031": {
+    "lowest": "฿29.11",
+    "volume": 40,
+    "median": ""
+  },
+  "513091": {
+    "lowest": "฿2.30",
+    "volume": 4944,
+    "median": ""
+  },
+  "433031": {
+    "lowest": "฿7.99",
+    "volume": 174,
+    "median": ""
+  },
+  "535111": {
+    "lowest": "฿58.99",
+    "volume": 107,
+    "median": ""
+  },
+  "623091": {
+    "lowest": "฿29.14",
+    "volume": 79,
+    "median": ""
+  },
+  "125004": {
+    "lowest": "฿7.16",
+    "volume": 765,
+    "median": ""
+  },
+  "513051": {
+    "lowest": "฿1.65",
+    "volume": 18221,
+    "median": ""
+  },
+  "434051": {
+    "lowest": "฿36.70",
+    "volume": 92,
+    "median": ""
+  },
+  "433141": {
+    "lowest": "฿9.17",
+    "volume": 301,
+    "median": ""
+  },
+  "315041": {
+    "lowest": "฿48.19",
+    "volume": 71,
+    "median": ""
+  },
+  "614071": {
+    "lowest": "฿50.68",
+    "volume": 44,
+    "median": ""
+  },
+  "304031": {
+    "lowest": "฿3.94",
+    "volume": 356,
+    "median": ""
+  },
+  "513071": {
+    "lowest": "฿1.91",
+    "volume": 7155,
+    "median": ""
+  },
+  "335071": {
+    "lowest": "฿29.80",
+    "volume": 103,
+    "median": ""
+  },
+  "604071": {
+    "lowest": "฿149.30",
+    "volume": 25,
+    "median": ""
+  },
+  "335041": {
+    "lowest": "฿29.53",
+    "volume": 52,
+    "median": ""
+  },
+  "525051": {
+    "lowest": "฿39.76",
+    "volume": 78,
+    "median": ""
+  },
+  "335051": {
+    "lowest": "฿48.70",
+    "volume": 76,
+    "median": ""
+  },
+  "634091": {
+    "lowest": "฿46.01",
+    "volume": 69,
+    "median": ""
+  },
+  "344051": {
+    "lowest": "฿81.42",
+    "volume": 42,
+    "median": ""
+  },
+  "533011": {
+    "lowest": "฿1.44",
+    "volume": 740,
+    "median": ""
+  },
+  "534031": {
+    "lowest": "฿6.18",
+    "volume": 137,
+    "median": ""
+  },
+  "604111": {
+    "lowest": "฿141.77",
+    "volume": 30,
+    "median": ""
+  },
+  "434141": {
+    "lowest": "฿30.71",
+    "volume": 65,
+    "median": ""
+  },
+  "614051": {
+    "lowest": "฿101.02",
+    "volume": 36,
+    "median": ""
+  },
+  "344111": {
+    "lowest": "฿28.76",
+    "volume": 73,
+    "median": ""
+  },
+  "623111": {
+    "lowest": "฿46.12",
+    "volume": 62,
+    "median": ""
+  },
+  "503071": {
+    "lowest": "฿1.89",
+    "volume": 7792,
+    "median": ""
+  },
+  "424111": {
+    "lowest": "฿24.46",
+    "volume": 69,
+    "median": ""
+  },
+  "315171": {
+    "lowest": "฿366.09",
+    "volume": 67,
+    "median": ""
+  },
+  "533071": {
+    "lowest": "฿1.89",
+    "volume": 6746,
+    "median": ""
+  },
+  "504021": {
+    "lowest": "฿5.67",
+    "volume": 105,
+    "median": ""
+  },
+  "121004": {
+    "lowest": "฿0.99",
+    "volume": 48191,
+    "median": ""
+  },
+  "433021": {
+    "lowest": "฿8.57",
+    "volume": 109,
+    "median": ""
+  },
+  "623011": {
+    "lowest": "฿27.16",
+    "volume": 21,
+    "median": ""
+  },
+  "122001": {
+    "lowest": "฿0.99",
+    "volume": 16803,
+    "median": ""
+  },
+  "534011": {
+    "lowest": "฿5.11",
+    "volume": 47,
+    "median": ""
+  },
+  "403051": {
+    "lowest": "฿1.83",
+    "volume": 1975,
+    "median": ""
+  },
+  "444171": {
+    "lowest": "฿86.59",
+    "volume": 31,
+    "median": ""
+  },
+  "633011": {
+    "lowest": "฿13.81",
+    "volume": 28,
+    "median": ""
+  },
+  "614111": {
+    "lowest": "฿103.53",
+    "volume": 22,
+    "median": ""
+  },
+  "624041": {
+    "lowest": "฿84.92",
+    "volume": 11,
+    "median": ""
+  },
+  "405041": {
+    "lowest": "฿37.72",
+    "volume": 39,
+    "median": ""
+  },
+  "633021": {
+    "lowest": "฿27.29",
+    "volume": 26,
+    "median": ""
+  },
+  "424141": {
+    "lowest": "฿18.97",
+    "volume": 94,
+    "median": ""
+  },
+  "613011": {
+    "lowest": "฿22.14",
+    "volume": 19,
+    "median": ""
+  },
+  "355041": {
+    "lowest": "฿95.26",
+    "volume": 12,
+    "median": ""
+  },
+  "314011": {
+    "lowest": "฿5.11",
+    "volume": 52,
+    "median": ""
+  },
+  "122002": {
+    "lowest": "฿0.99",
+    "volume": 19365,
+    "median": ""
+  },
+  "614141": {
+    "lowest": "฿78.57",
+    "volume": 41,
+    "median": ""
+  },
+  "534021": {
+    "lowest": "฿5.44",
+    "volume": 133,
     "median": ""
   }
 }
