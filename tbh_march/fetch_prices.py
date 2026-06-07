@@ -12,7 +12,8 @@ fetch_prices.py — ดึงราคา Steam Market (THB) สำหรับ 
   python fetch_prices.py --reset      # ล้าง progress แล้วดึงใหม่ทั้งหมด
 """
 import json, time, sys, os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+TH_TZ = timezone(timedelta(hours=7))  # เวลาไทย (runner เป็น UTC จึงต้อง fix)
 sys.stdout.reconfigure(encoding='utf-8')
 try:
     import requests
@@ -177,7 +178,7 @@ def main():
     except KeyboardInterrupt:
         print('\n⏸ หยุดแล้ว')
 
-    prices['_fetched_at'] = datetime.now().isoformat(timespec='seconds')
+    prices['_fetched_at'] = datetime.now(TH_TZ).isoformat(timespec='seconds')
     save_json(PRICES_FILE, prices)
 
     elapsed = time.time() - start_time
