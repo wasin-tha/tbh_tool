@@ -1,2 +1,9 @@
 # Steam login token — ห้าม commit เด็ดขาด (ใช้กับ fetch_prices.py)
 steam_cookie.txt
+
+# junk
+__pycache__/
+*.pyc
+*.tmp
+price_progress.json
+.venv/

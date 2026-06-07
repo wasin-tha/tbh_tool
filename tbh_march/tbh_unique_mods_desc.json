@@ -1,0 +1,17 @@
+{
+ "ShieldChargeKillCooldown": "Killing an enemy with Shield Charge resets its cooldown.",
+ "SkillProjectileCountUp": "Equipped skill's projectile count +1.",
+ "SkewerShotBleedingStrike": "Skewer Shot deals double damage to bleeding enemies.",
+ "FlameHydraBerserk": "Hydra's attack speed increases by 200%.",
+ "IceOrbFreezeToCold": "Ice Orb has a 30% chance to freeze chilled enemies on hit.",
+ "ExplosiveBoltHalf": "Explosive Bolt damage and cooldown decrease by 50%.",
+ "SlayerLowHpAttackSpeed": "Attack Speed is amplified by 1% per 1% missing HP.",
+ "AxeSpinBleedingChance": "Axe Spin's chance to cause bleeding increases to 50%.",
+ "SkillMultiStrikeCountUp": "Equipped skill's multistrike count +1.",
+ "SkillBaseAttackCountReduce": "Equipped skill requires 1 less basic attack to trigger.",
+ "SkillCooldownReduce": "Equipped skill's cooldown is reduced.",
+ "ChargeTrapExplosiveCooldown": "Each time Explosive Bolt kills a monster, Charge Trap cooldown is reduced by 1 second.",
+ "SnowstormEnhanceFrozenEnemy": "Snowstorm deals 100% additional damage to frozen enemies.",
+ "ArrowRainCriticalCooldown": "When a basic attack critically hits, Arrow Rain cooldown is reduced by 0.5 seconds.",
+ "WaveMoveFastestPartyMember": "Move between waves at the speed of the fastest party member."
+}
