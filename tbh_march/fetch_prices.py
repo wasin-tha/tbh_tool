@@ -26,7 +26,7 @@ BASE        = os.path.dirname(os.path.abspath(__file__))
 APP_ID      = '3678970'
 CURRENCY    = 14        # 14 = บาท (THB) — ห้ามใช้ 40
 PAGE_SIZE   = 10        # Steam cap หน้าละ 10 (beta)
-DELAY       = 3.0       # วินาที ระหว่างหน้า
+DELAY       = 2.0       # วินาที ระหว่างหน้า (~3.5 นาที; ลดได้อีกแต่เสี่ยง 429 มากขึ้น)
 COOLDOWN    = 45        # วินาที เมื่อโดน 429
 MAX_RETRIES = 3         # retry ต่อหน้า หลัง 429
 RENDER_URL  = ('https://steamcommunity.com/market/search/render/'
