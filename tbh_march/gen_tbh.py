@@ -839,6 +839,42 @@ body.lang-th .lang-toggle .opt-th { color: #0a0a0a; }
 .pill:hover { border-color: var(--gold-dim); color: var(--gold); }
 .pill.active { background: var(--gold); border-color: var(--gold); color: #0a0a0a; font-weight: 700; }
 .grade-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; flex-shrink:0; }
+
+/* ── custom Effect dropdown ── */
+.eff-dd { position:relative; }
+.eff-trigger {
+  display:flex; align-items:center; gap:8px; min-width:180px;
+  background:var(--surf2); border:1px solid var(--border2); color:var(--text);
+  padding:6px 11px; border-radius:var(--r-sm); font-size:12px; font-weight:600;
+  font-family:inherit; cursor:pointer; transition:border-color .15s;
+}
+.eff-trigger:hover { border-color:var(--gold-dim); }
+.eff-dd.open .eff-trigger { border-color:var(--gold); }
+.eff-cur { flex:1; text-align:left; white-space:nowrap; }
+.eff-trigger svg { color:var(--muted); transition:transform .15s; flex-shrink:0; }
+.eff-dd.open .eff-trigger svg { transform:rotate(180deg); color:var(--gold); }
+.eff-panel {
+  position:absolute; top:calc(100% + 4px); left:0; z-index:300;
+  width:260px; max-width:80vw; background:var(--surf); border:1px solid var(--border2);
+  border-radius:var(--r); box-shadow:0 12px 32px rgba(0,0,0,.6);
+  display:none; overflow:hidden;
+}
+.eff-dd.open .eff-panel { display:block; }
+.eff-search-wrap { padding:8px; border-bottom:1px solid var(--border); }
+.eff-search {
+  width:100%; background:var(--surf2); border:1px solid var(--border); color:var(--text);
+  padding:7px 10px; border-radius:var(--r-sm); font-size:13px; font-family:inherit; outline:none;
+}
+.eff-search:focus { border-color:var(--gold); }
+.eff-list { max-height:280px; overflow-y:auto; padding:4px; }
+.eff-opt {
+  padding:7px 10px; border-radius:var(--r-sm); font-size:12.5px; color:#cbd5e1;
+  cursor:pointer; transition:background .1s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.eff-opt:hover { background:var(--surf2); color:var(--text); }
+.eff-opt.active { background:rgba(232,200,74,.15); color:var(--gold); font-weight:700; }
+.eff-opt.hide { display:none; }
+.eff-empty { padding:14px; text-align:center; font-size:12px; color:var(--muted); display:none; }
 .result-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
 .result-count { color: var(--gold); font-weight: 700; font-size: 15px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap: 13px; }
@@ -1380,11 +1416,22 @@ TAB1_START = """
         <button class="pill" data-filter="grade" data-value="BEYOND"><span class="grade-dot" style="background:""" + GRADE_COLORS['BEYOND'] + """"></span>""" + gb('Beyond',GRADE_TH['BEYOND']) + """</button>
       </div>
       <div class="filter-group">
-        <span class="filter-label">Effect</span>
-        <select class="ctrl" id="mat-effect" style="width:auto;min-width:160px;height:30px;font-size:12px" onchange="window.applyMatFilter&&window.applyMatFilter()">
-          <option value="">ทุก effect</option>
-          __EFFECT_OPTIONS__
-        </select>
+        <span class="filter-label">""" + gb('Effect','เอฟเฟกต์') + """</span>
+        <div class="eff-dd" id="eff-dd">
+          <button type="button" class="eff-trigger" id="eff-trigger" onclick="toggleEffDD(event)">
+            <span class="eff-cur" id="eff-cur">""" + gb('All effects','ทุกเอฟเฟกต์') + """</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="eff-panel" id="eff-panel">
+            <div class="eff-search-wrap">
+              <input type="search" class="eff-search" id="eff-search" placeholder="" autocomplete="off" oninput="filterEffOpts(this.value)">
+            </div>
+            <div class="eff-list" id="eff-list">
+              <div class="eff-opt active" data-v="" onclick="pickEff(this)">""" + gb('All effects','ทุกเอฟเฟกต์') + """</div>
+              __EFFECT_OPTIONS__
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1632,7 +1679,7 @@ function toggleLang() {
   applyLangToSelects(th);
 }
 function applyLangToSelects(th) {
-  document.querySelectorAll('#mat-effect option[data-en], #stages-container option[data-en]').forEach(o => {
+  document.querySelectorAll('#stages-container option[data-en]').forEach(o => {
     o.textContent = th ? o.dataset.th : o.dataset.en;
   });
 }
@@ -1641,6 +1688,35 @@ function jbi(o) {
   if (typeof o === 'string') return esc(o);
   return '<span class="en">' + esc(o.e) + '</span><span class="th">' + esc(o.t) + '</span>';
 }
+// ── custom Effect dropdown ──
+window.matEffectVal = '';
+function toggleEffDD(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('eff-dd');
+  const open = dd.classList.toggle('open');
+  if (open) { const s = document.getElementById('eff-search'); s.value=''; filterEffOpts(''); setTimeout(()=>s.focus(),0); }
+}
+function pickEff(el) {
+  window.matEffectVal = el.dataset.v;
+  document.querySelectorAll('#eff-list .eff-opt').forEach(o => o.classList.toggle('active', o===el));
+  document.getElementById('eff-cur').innerHTML = el.innerHTML;
+  document.getElementById('eff-dd').classList.remove('open');
+  window.applyMatFilter && window.applyMatFilter();
+}
+function filterEffOpts(q) {
+  q = (q||'').trim().toLowerCase();
+  let n = 0;
+  document.querySelectorAll('#eff-list .eff-opt').forEach(o => {
+    const hit = !q || o.textContent.toLowerCase().includes(q);
+    o.classList.toggle('hide', !hit);
+    if (hit) n++;
+  });
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('eff-dd');
+  if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+});
+
 // bilingual with a per-side transform (e.g. {0} replacement). fn must return HTML-safe string.
 function jbiR(o, fn) {
   if (o == null) return '';
@@ -1677,7 +1753,6 @@ function switchTab(btn) {
   const emptyEl = document.getElementById('mat-empty');
   const searchEl = document.getElementById('mat-search');
   const allCards = Array.from(grid.querySelectorAll('.card'));
-  const effectEl = document.getElementById('mat-effect');
   let typeSet = new Set(), slotSet = new Set(), gradeSet = new Set(), q = '', effect = '';
 
   function apply() {
@@ -1707,7 +1782,7 @@ function switchTab(btn) {
     countEl.textContent = n;
     emptyEl.style.display = n === 0 ? '' : 'none';
   }
-  window.applyMatFilter = function() { effect = effectEl ? effectEl.value : ''; apply(); };
+  window.applyMatFilter = function() { effect = window.matEffectVal || ''; apply(); };
 
   document.querySelectorAll('.pill[data-filter]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2990,7 +3065,7 @@ JS_WITH_GEAR = JS.replace(
 
 # ── Assemble & write ──────────────────────────────────────────────────────────
 EFFECT_OPTIONS = ''.join(
-    f'<option value="{s}" data-th="{_esc_min(_stat_th.get(s, s))}" data-en="{_esc_min(s)}">{s}</option>'
+    f'<div class="eff-opt" data-v="{_esc_min(s)}" onclick="pickEff(this)">{gb(s, _stat_th.get(s, s))}</div>'
     for s in ALL_STATS
 )
 TAB1_START_FILLED = TAB1_START.replace('__EFFECT_OPTIONS__', EFFECT_OPTIONS)
