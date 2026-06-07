@@ -135,6 +135,7 @@ body.lang-th .lang-toggle .opt-th { color: #0a0a0a; }
 }
 .pill:hover { border-color: var(--gold-dim); color: var(--gold); }
 .pill.active { background: var(--gold); border-color: var(--gold); color: #0a0a0a; font-weight: 700; }
+.grade-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; flex-shrink:0; }
 .result-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
 .result-count { color: var(--gold); font-weight: 700; font-size: 15px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap: 13px; }
@@ -607,13 +608,13 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
       <div class="filter-group">
         <span class="filter-label"><span class="en">Grade</span><span class="th">ระดับ</span></span>
         <button class="pill active" data-filter="grade" data-value=""><span class="en">All</span><span class="th">ทั้งหมด</span></button>
-        <button class="pill" data-filter="grade" data-value="COMMON"><span class="en">Common</span><span class="th">ธรรมดา</span></button>
-        <button class="pill" data-filter="grade" data-value="UNCOMMON"><span class="en">Uncommon</span><span class="th">ไม่ธรรมดา</span></button>
-        <button class="pill" data-filter="grade" data-value="RARE"><span class="en">Rare</span><span class="th">หายาก</span></button>
-        <button class="pill" data-filter="grade" data-value="LEGENDARY"><span class="en">Legendary</span><span class="th">ตำนาน</span></button>
-        <button class="pill" data-filter="grade" data-value="IMMORTAL"><span class="en">Immortal</span><span class="th">อมตะ</span></button>
-        <button class="pill" data-filter="grade" data-value="ARCANA"><span class="en">Arcana</span><span class="th">อาร์คานา</span></button>
-        <button class="pill" data-filter="grade" data-value="BEYOND"><span class="en">Beyond</span><span class="th">เหนือขีดจำกัด</span></button>
+        <button class="pill" data-filter="grade" data-value="COMMON"><span class="grade-dot" style="background:#c8cad6"></span><span class="en">Common</span><span class="th">ธรรมดา</span></button>
+        <button class="pill" data-filter="grade" data-value="UNCOMMON"><span class="grade-dot" style="background:#54fc0c"></span><span class="en">Uncommon</span><span class="th">ไม่ธรรมดา</span></button>
+        <button class="pill" data-filter="grade" data-value="RARE"><span class="grade-dot" style="background:#4d9eff"></span><span class="en">Rare</span><span class="th">หายาก</span></button>
+        <button class="pill" data-filter="grade" data-value="LEGENDARY"><span class="grade-dot" style="background:#fc9c0c"></span><span class="en">Legendary</span><span class="th">ตำนาน</span></button>
+        <button class="pill" data-filter="grade" data-value="IMMORTAL"><span class="grade-dot" style="background:#fc2424"></span><span class="en">Immortal</span><span class="th">อมตะ</span></button>
+        <button class="pill" data-filter="grade" data-value="ARCANA"><span class="grade-dot" style="background:#c84dff"></span><span class="en">Arcana</span><span class="th">อาร์คานา</span></button>
+        <button class="pill" data-filter="grade" data-value="BEYOND"><span class="grade-dot" style="background:#ff4d8f"></span><span class="en">Beyond</span><span class="th">เหนือขีดจำกัด</span></button>
       </div>
       <div class="filter-group">
         <span class="filter-label">Effect</span>
@@ -768,13 +769,13 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
       <div class="filter-group">
         <span class="filter-label"><span class="en">Grade</span><span class="th">ระดับ</span></span>
         <button class="pill active" data-gf="grade" data-gv=""><span class="en">Legendary+</span><span class="th">ตำนาน+</span></button>
-        <button class="pill" data-gf="grade" data-gv="LEGENDARY"><span class="en">Legendary</span><span class="th">ตำนาน</span></button>
-        <button class="pill" data-gf="grade" data-gv="IMMORTAL"><span class="en">Immortal</span><span class="th">อมตะ</span></button>
-        <button class="pill" data-gf="grade" data-gv="ARCANA"><span class="en">Arcana</span><span class="th">อาร์คานา</span></button>
-        <button class="pill" data-gf="grade" data-gv="BEYOND"><span class="en">Beyond</span><span class="th">เหนือขีดจำกัด</span></button>
-        <button class="pill" data-gf="grade" data-gv="CELESTIAL"><span class="en">Celestial</span><span class="th">สวรรค์</span></button>
-        <button class="pill" data-gf="grade" data-gv="DIVINE"><span class="en">Divine</span><span class="th">ศักดิ์สิทธิ์</span></button>
-        <button class="pill" data-gf="grade" data-gv="COSMIC"><span class="en">Cosmic</span><span class="th">จักรวาล</span></button>
+        <button class="pill" data-gf="grade" data-gv="LEGENDARY"><span class="grade-dot" style="background:#fc9c0c"></span><span class="en">Legendary</span><span class="th">ตำนาน</span></button>
+        <button class="pill" data-gf="grade" data-gv="IMMORTAL"><span class="grade-dot" style="background:#fc2424"></span><span class="en">Immortal</span><span class="th">อมตะ</span></button>
+        <button class="pill" data-gf="grade" data-gv="ARCANA"><span class="grade-dot" style="background:#c84dff"></span><span class="en">Arcana</span><span class="th">อาร์คานา</span></button>
+        <button class="pill" data-gf="grade" data-gv="BEYOND"><span class="grade-dot" style="background:#ff4d8f"></span><span class="en">Beyond</span><span class="th">เหนือขีดจำกัด</span></button>
+        <button class="pill" data-gf="grade" data-gv="CELESTIAL"><span class="grade-dot" style="background:#6ccce4"></span><span class="en">Celestial</span><span class="th">สวรรค์</span></button>
+        <button class="pill" data-gf="grade" data-gv="DIVINE"><span class="grade-dot" style="background:#fce454"></span><span class="en">Divine</span><span class="th">ศักดิ์สิทธิ์</span></button>
+        <button class="pill" data-gf="grade" data-gv="COSMIC"><span class="grade-dot" style="background:#fcfcfc"></span><span class="en">Cosmic</span><span class="th">จักรวาล</span></button>
       </div>
       <div class="filter-group" style="flex-wrap:wrap">
         <span class="filter-label">Level</span>
