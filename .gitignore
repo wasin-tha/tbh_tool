@@ -1,6 +1,9 @@
 # Steam login token — ห้าม commit เด็ดขาด (ใช้กับ fetch_prices.py)
 steam_cookie.txt
 
+# raw price data — เปลี่ยนทุกชั่วโมง (ราคาฝังใน index.html อยู่แล้ว ไม่ต้อง track)
+tbh_march/tbh_prices.json
+
 # junk
 __pycache__/
 *.pyc
