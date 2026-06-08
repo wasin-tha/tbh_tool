@@ -132,6 +132,25 @@ def main():
 
     matched, noncur, total_count, start = 0, 0, None, 0
     start_time = time.time()
+
+    # ── ยืนยันสกุลเงิน ฿ ก่อนเริ่ม — currency จาก runner (IP US) แกว่ง: บางครั้งคืน $ ทั้งที่ cookie valid
+    #    → retry หลายรอบจนกว่าจะได้ ฿ (แทนที่จะ fail ทันทีเหมือนเดิม)
+    CUR_RETRIES = 12
+    for attempt in range(CUR_RETRIES):
+        res = fetch_page(0)
+        if res in ('RATELIMIT', None):
+            time.sleep(10); continue
+        r0, total_count = res
+        if r0 and THB in r0[0].get('sell_price_text', ''):
+            break   # ได้ ฿ แล้ว — เริ่มดึงจริง (loop จะ fetch หน้า 0 ใหม่)
+        ex = (r0[0].get('sell_price_text', '') if r0 else '?')
+        print(f'  สกุลเงินยังไม่ใช่ ฿ ("{ex}") — retry {attempt+1}/{CUR_RETRIES}', flush=True)
+        time.sleep(12)
+    else:
+        print('❌ retry ครบแล้วยังไม่ได้ ฿ — cookie หมดอายุ/ไม่ valid')
+        print(f'   อัปเดต Secret STEAM_COOKIE (หรือไฟล์ {COOKIE_FILE}) แล้วรันใหม่')
+        sys.exit(2)  # exit 2 = cookie/สกุลเงินผิด
+
     try:
         while total_count is None or start < total_count:
             res = fetch_page(start)
@@ -143,18 +162,6 @@ def main():
                 start += PAGE_SIZE
                 continue
             results, total_count = res
-
-            # เช็คสกุลเงินจากหน้าแรก — ต้องเป็น ฿ (THB) เท่านั้น
-            if start == 0 and results:
-                txt = results[0].get('sell_price_text', '')
-                if THB not in txt:
-                    print(f'❌ ราคาที่ได้ไม่ใช่ THB (ตัวอย่าง: "{txt}")')
-                    print('   endpoint นี้คืนสกุลเงินตาม "บัญชีที่ login" ไม่ใช่ currency param')
-                    print(f'   วิธีแก้: เอา cookie login มาวางในไฟล์  {COOKIE_FILE}')
-                    print('     1) เปิด Chrome ที่ login Steam อยู่ → F12 → แท็บ Application')
-                    print('     2) Cookies → https://steamcommunity.com → หา "steamLoginSecure"')
-                    print('     3) copy ค่า Value มาวางในไฟล์ steam_cookie.txt แล้วรันใหม่')
-                    sys.exit(2)  # exit code 2 = สกุลเงินผิด/cookie หมดอายุ (ให้ .bat หยุด)
 
             for it in results:
                 ids = idx.get(it.get('hash_name', ''))
