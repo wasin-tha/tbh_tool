@@ -134,20 +134,20 @@ def main():
     start_time = time.time()
 
     # ── ยืนยันสกุลเงิน ฿ ก่อนเริ่ม — currency จาก runner (IP US) แกว่ง: บางครั้งคืน $ ทั้งที่ cookie valid
-    #    → retry หลายรอบจนกว่าจะได้ ฿ (แทนที่จะ fail ทันทีเหมือนเดิม)
-    CUR_RETRIES = 12
+    #    ลองหน้าแรก 5 รอบ (ห่าง 2 วิ) ถ้าไม่ได้ ฿ → error ไปเลย (ไม่เริ่มดึง)
+    CUR_RETRIES = 5
     for attempt in range(CUR_RETRIES):
         res = fetch_page(0)
         if res in ('RATELIMIT', None):
-            time.sleep(10); continue
+            time.sleep(2); continue
         r0, total_count = res
         if r0 and THB in r0[0].get('sell_price_text', ''):
-            break   # ได้ ฿ แล้ว — เริ่มดึงจริง (loop จะ fetch หน้า 0 ใหม่)
+            break   # ได้ ฿ — เริ่มดึงจริง
         ex = (r0[0].get('sell_price_text', '') if r0 else '?')
         print(f'  สกุลเงินยังไม่ใช่ ฿ ("{ex}") — retry {attempt+1}/{CUR_RETRIES}', flush=True)
-        time.sleep(12)
+        time.sleep(2)
     else:
-        print('❌ retry ครบแล้วยังไม่ได้ ฿ — cookie หมดอายุ/ไม่ valid')
+        print('❌ ลอง 5 รอบแล้วยังไม่ได้ ฿ — cookie หมดอายุ/ไม่ valid')
         print(f'   อัปเดต Secret STEAM_COOKIE (หรือไฟล์ {COOKIE_FILE}) แล้วรันใหม่')
         sys.exit(2)  # exit 2 = cookie/สกุลเงินผิด
 
@@ -163,12 +163,17 @@ def main():
                 continue
             results, total_count = res
 
+            # currency เด้งเป็น $ กลางทาง → ยกเลิกทั้ง run (กันได้ราคาครึ่งๆ ทับของเดิม)
+            if results and THB not in results[0].get('sell_price_text', ''):
+                print('❌ สกุลเงินเปลี่ยนเป็น $ กลางทาง — ยกเลิก ไม่ commit ของครึ่งๆ (เว็บใช้ราคาเดิม)')
+                sys.exit(2)
+
             for it in results:
                 ids = idx.get(it.get('hash_name', ''))
                 if not ids:
                     continue
                 txt = it.get('sell_price_text', '')
-                if THB not in txt:   # กันเก็บราคาผิดสกุล (เช่นบางหน้าเด้งเป็น USD)
+                if THB not in txt:
                     noncur += 1
                     continue
                 rec = {'lowest': txt, 'volume': it.get('sell_listings', ''), 'median': ''}
