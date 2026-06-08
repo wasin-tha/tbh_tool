@@ -452,6 +452,15 @@ for h in heroes_raw:
 import json as _json2
 HEROES_JSON = _json2.dumps(heroes_skills_data, ensure_ascii=False, separators=(',',':'))
 
+# ── Monster element map (en name → attack elements) ───────────────────────────
+# จาก tbh_monsters.json (attackElements) — มอนบางตัวไม่มีข้อมูล element (attacks:null)
+monster_el = {}
+for x in monsters_raw:
+    en = (x.get('MonsterNameStringKey_i18n') or {}).get('en-US')
+    els = x.get('attackElements') or []
+    if en and els:
+        monster_el[en] = els
+
 # ── Build stages data ─────────────────────────────────────────────────────────
 stages_by_key = {}
 for s in stages_raw:
@@ -461,6 +470,7 @@ for s in stages_raw:
         'name': biobj(m['name']),
         'portrait': m['portrait'],
         'spawn': m['spawn'],
+        'el': monster_el.get((m.get('name') or {}).get('en'), []),
     } for m in detail.get('monsters', []) if (m.get('name') or {}).get('en') and m.get('portrait')]
 
     def _box_bi(box):
@@ -489,6 +499,7 @@ for s in stages_raw:
         'kills':   s.get('kills') or None,
         'gold':  s.get('goldPerClear', 0),
         'exp':   s.get('expPerClear', 0),
+        'boss_el':      monster_el.get(((s.get('boss') or {}).get('name') or {}).get('en-US', ''), []),
         'boss_name':    ((s.get('boss') or {}).get('name') or {}).get('en-US', ''),
         'boss_bi':      biobj((s.get('boss') or {}).get('name')),
         'boss_portrait': f"{WIKI_BASE}{s['boss']['portrait']}" if s.get('boss') and s['boss'].get('portrait') else '',
@@ -1193,6 +1204,10 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .monster-card { display:flex; flex-direction:column; align-items:center; gap:4px; width:60px; }
 .monster-portrait { width:52px; height:52px; object-fit:contain; border-radius:6px; background:#0a101e; border:1px solid var(--border2); image-rendering:pixelated; }
 .monster-name { font-size:9px; color:var(--muted); text-align:center; line-height:1.2; }
+.ele-row { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; margin-top:1px; }
+.ele-chip { font-size:9px; font-weight:700; line-height:1; padding:2px 5px; border-radius:20px;
+            color:var(--ec); background:color-mix(in srgb, var(--ec) 15%, transparent);
+            border:1px solid color-mix(in srgb, var(--ec) 45%, transparent); white-space:nowrap; }
 
 /* Loot boxes */
 .loot-box { padding:14px 18px; border-top:1px solid var(--border); }
@@ -1712,6 +1727,19 @@ function jbiR(o, fn) {
 const DIFF_TH = {Normal:'ปกติ',Nightmare:'ฝันร้าย',Hell:'นรก',Torment:'ทรมาน',
                  NORMAL:'ปกติ',NIGHTMARE:'ฝันร้าย',HELL:'นรก',TORMENT:'ทรมาน'};
 function jdiff(d) { return jbi({e: d, t: (DIFF_TH[d] || d)}); }
+
+// ── Monster attack elements (สี + ชื่อไทยอิงแหล่งจาก wiki/stat_strings) ──
+const ELEMENT_COLOR = {Physical:'#d7dbe3',Fire:'#ff6b32',Cold:'#62c7ff',Lightning:'#f7d84b',Chaos:'#d064ff'};
+const ELEMENT_TH    = {Physical:'กายภาพ',Fire:'ไฟ',Cold:'น้ำแข็ง',Lightning:'สายฟ้า',Chaos:'เคออส'};
+function eleChips(els) {
+  // ไม่มีข้อมูล element → โชว์ "Unknown" สีเทา (ตรงกับที่ wiki แสดง)
+  if (!els || !els.length)
+    return `<span class="ele-chip ele-unknown" style="--ec:#64748b">Unknown</span>`;
+  return els.map(e => {
+    const c = ELEMENT_COLOR[e] || '#94a3b8';
+    return `<span class="ele-chip" style="--ec:${c}">${jbi({e, t:(ELEMENT_TH[e]||e)})}</span>`;
+  }).join('');
+}
 
 // ── Prices: โหลด runtime จาก prices.json (แยกออกจาก index.html กันราคาเก่าทับตอน commit) ──
 let PRICES = {}, PRICES_AT = '';
@@ -2585,6 +2613,7 @@ function showStageDetail(s, color) {
             <div class="monster-card">
               <img class="monster-portrait" src="${esc(m.portrait)}" alt="${esc(m.name.e)}" onerror="this.style.opacity='.2'">
               <div class="monster-name">${jbi(m.name)}</div>
+              <div class="ele-row">${eleChips(m.el)}</div>
             </div>`).join('')}
         </div>
       </div>` : ''}
@@ -2594,6 +2623,7 @@ function showStageDetail(s, color) {
         <div>
           <div class="boss-label">Stage Boss</div>
           <div class="boss-name">${jbi(s.boss_bi||s.boss_name)}</div>
+          <div class="ele-row" style="justify-content:flex-start">${eleChips(s.boss_el)}</div>
         </div>
       </div>` : ''}
       ${lootBoxHtml(s.monsterBox, 'Monster Drops')}
