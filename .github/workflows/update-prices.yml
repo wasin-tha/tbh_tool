@@ -48,7 +48,11 @@ jobs:
             echo "no change"
           else
             git commit -m "Update Steam Market prices (auto)"
-            git push
+            # rebase บน remote ก่อน push (กัน "fetch first" ตอน remote ขยับ)
+            for i in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              echo "push retry $i..."; sleep 4
+            done
           fi
 
       - name: Notify Discord on failure
