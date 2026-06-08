@@ -621,6 +621,13 @@ for it in items_list:
 GEARTYPE_ICON_JSON = _json2.dumps({g: v[1] for g, v in geartype_icon.items()},
                                   ensure_ascii=False, separators=(',',':'))
 
+# crafting type (category) → ไอคอนตัวแทน (ใช้ gear type ตัวแทนของหมวดนั้น)
+_craft_type_gt = {'MainWeapon':'SWORD','SubWeapon':'SHIELD','Helmet':'HELMET',
+                  'Armor':'ARMOR','Gloves':'GLOVES','Boots':'BOOTS','Accessory':'AMULET'}
+def _craft_icon(cat):
+    gt = _craft_type_gt.get(cat)
+    return geartype_icon.get(gt, (0, ''))[1] if gt else ''
+
 # ── Build rune data ───────────────────────────────────────────────────────────
 def _rune_color(stat):
     if any(k in stat for k in ['AttackDamage','Crit','PhysicalDamage','Elemental','DamagePercent','SkillDamage']): return '#f87171'
@@ -677,7 +684,7 @@ def card_html(m):
         )
     price_html = ''
     if m['price']:
-        vol = f'<span class="price-vol">{VOL_ICON} {m["volume"]} sold</span>' if m['volume'] else ''
+        vol = f'<span class="price-vol">{VOL_ICON} {int(m["volume"]):,} sold</span>' if m['volume'] else ''
         price_html = f'<div class="price-row"><span class="price-val">{m["price"]}</span>{vol}</div>'
     steam = (f'<a class="steam-btn" href="{m["steam_url"]}" target="_blank" rel="noopener" title="Steam Market">'
              f'{STEAM_ICON}</a>') if m['marketable'] else ''
@@ -1587,13 +1594,12 @@ TAB_CRAFT = """
       <div class="filter-group">
         <span class="filter-label">""" + gb('Type','ประเภท') + """</span>
         <button class="pill active" data-cf="" onclick="setCraftFilter(this)">""" + gb('All','ทั้งหมด') + """</button>
-        <button class="pill" data-cf="MainWeapon" onclick="setCraftFilter(this)">""" + gb('Main Weapon','อาวุธหลัก') + """</button>
-        <button class="pill" data-cf="SubWeapon" onclick="setCraftFilter(this)">""" + gb('Sub Weapon','อาวุธรอง') + """</button>
-        <button class="pill" data-cf="Helmet" onclick="setCraftFilter(this)">""" + gb('Helmet','หมวก') + """</button>
-        <button class="pill" data-cf="Armor" onclick="setCraftFilter(this)">""" + gb('Armor','เกราะ') + """</button>
-        <button class="pill" data-cf="Gloves" onclick="setCraftFilter(this)">""" + gb('Gloves','ถุงมือ') + """</button>
-        <button class="pill" data-cf="Boots" onclick="setCraftFilter(this)">""" + gb('Boots','รองเท้า') + """</button>
-        <button class="pill" data-cf="Accessory" onclick="setCraftFilter(this)">""" + gb('Accessory','เครื่องประดับ') + """</button>
+        """ + ''.join(
+            f'<button class="pill type-pill with-portrait" data-cf="{cat}" onclick="setCraftFilter(this)">'
+            f'<img class="type-portrait type-portrait-sq" src="{_craft_icon(cat)}" alt="" onerror="this.style.display=\'none\'">'
+            f'<span class="type-txt">{gb(CRAFT_TYPE_EN[cat], CRAFT_TYPE_TH[cat])}</span></button>'
+            for cat in ['MainWeapon','SubWeapon','Helmet','Armor','Gloves','Boots','Accessory']
+        ) + """
       </div>
     </div>
   </div>
@@ -2373,7 +2379,7 @@ function renderGearItems(list) {
             <span class="tag-type">${jbi({e:g.gt, t:(GEARTYPE_TH[g.gt]||g.gt)})}</span>
             <span class="tag-type">Lv.${g.lv}</span>
           </div>
-          ${g.pr ? `<div class="price-row"><span class="price-val">${esc(g.pr)}</span>${g.pv?`<span class="price-vol"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> ${esc(g.pv)} sold</span>`:''}</div>` : ''}
+          ${g.pr ? `<div class="price-row"><span class="price-val">${esc(g.pr)}</span>${g.pv?`<span class="price-vol"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> ${Number(g.pv).toLocaleString('en')} sold</span>`:''}</div>` : ''}
         </div>
         <a class="steam-btn" href="${esc(g.su)}" target="_blank" rel="noopener" title="Steam Market">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.08 1.67-3.77 3.75-3.77 2.08 0 3.77 1.69 3.77 3.77s-1.69 3.77-3.77 3.77h-.087l-4.08 2.905c0 .052.004.103.004.154 0 1.56-1.258 2.826-2.818 2.826-1.364 0-2.504-.97-2.774-2.252L.189 14.4C1.179 19.836 6.016 24 11.979 24c6.627 0 12-5.373 12-12S18.606 0 11.979 0z"/></svg>
