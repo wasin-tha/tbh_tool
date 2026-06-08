@@ -1,9 +1,9 @@
 name: Update Steam Prices
 
 on:
-  schedule:
-    - cron: '37 * * * *'     # ทุก 1 ชั่วโมง (นาทีที่ 37 — เลี่ยงคิวต้นชั่วโมง)
-  workflow_dispatch:          # กดรันเองได้จากแท็บ Actions
+  # schedule ใช้ cron-job.org ยิง workflow_dispatch แทน (ตรงเวลากว่า GitHub cron)
+  # เพิ่ม GitHub schedule กลับได้: ใส่ schedule: - cron: '37 * * * *'
+  workflow_dispatch:          # cron-job.org + กดรันเองจากแท็บ Actions
 
 permissions:
   contents: write
