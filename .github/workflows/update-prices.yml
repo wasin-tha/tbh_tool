@@ -32,17 +32,18 @@ jobs:
           cd tbh_march
           python fetch_prices.py
 
-      - name: Rebuild index.html
+      - name: Rebuild index.html + prices.json
         run: |
           cd tbh_march
           python gen_tbh.py
           cp index.html ../index.html
+          cp prices.json ../prices.json
 
       - name: Commit & push if changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html prices.json
           if git diff --cached --quiet; then
             echo "no change"
           else

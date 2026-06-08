@@ -51,17 +51,9 @@ passive_maxlevel = {int(k): v for k, v in _ml.get('passives', {}).items()}
 
 prices = {int(k): v for k, v in prices_raw.items() if k != '_fetched_at'}
 
-_THAI_MON = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']
-def _fmt_price_date(iso):
-    if not iso: return ''
-    try:
-        from datetime import datetime
-        dt = datetime.fromisoformat(iso)
-        return f'{dt.day} {_THAI_MON[dt.month-1]} {str(dt.year+543)[-2:]} {dt.hour:02d}:{dt.minute:02d}'
-    except: return ''
-PRICE_DATE = _fmt_price_date(prices_raw.get('_fetched_at', ''))
-PRICE_DATE_HTML = (f'<span style="margin-left:auto;font-size:11px;color:var(--muted)">'
-                   f'ราคา • อัพเดท {PRICE_DATE}</span>') if PRICE_DATE else ''
+# ราคาแยกออกจาก index.html → โหลด prices.json ตอน runtime (JS เติมราคา)
+# placeholder span (เวลา/ราคาเติมด้วย JS จาก prices.json — ดู fillPrices ใน JS)
+PRICE_DATE_HTML = '<span class="price-date" style="margin-left:auto;font-size:11px;color:var(--muted)"></span>'
 items_by_id = {i['id']: i for i in items_list}
 mods_by_key = {}
 for m in mods_raw:
@@ -375,8 +367,6 @@ GEAR_JSON = _json.dumps([{
     'ic':   g['icon_url'],
     'su':   g['steam_url'],
     'co':   g['color'],
-    'pr':   prices.get(g['id'], {}).get('lowest', '') if isinstance(prices.get(g['id']), dict) else '',
-    'pv':   prices.get(g['id'], {}).get('volume', '')  if isinstance(prices.get(g['id']), dict) else '',
     'bs':   g['base_stats'],
     'ih':   g['inherent'],
     'um':   g['unique_mod'],
@@ -520,26 +510,18 @@ CRAFT_TYPE_EN = {
     'Gloves':'Gloves','Boots':'Boots','Accessory':'Accessory',
 }
 
-def _price_num(idv):
-    p = prices.get(idv)
-    if not isinstance(p, dict): return 0.0
-    s = (p.get('lowest') or '').replace('฿', '').replace(',', '').strip()
-    try: return float(s)
-    except: return 0.0
-
 craft_data = []
 for r in recipes_raw.get('crafting', []):
     mats = []
     for m in r['materials']:
         mid = m['id']
-        item = items_by_id.get(mid, {})
         nm_en = (m.get('name') or {}).get('en-US', '')
         mats.append({
+            'id':    mid,            # ราคา lookup runtime จาก PRICES
             'name':  biobj(m.get('name')),
             'icon':  f"{WIKI_BASE}{m['icon']}" if m.get('icon') else '',
             'count': m.get('count', 1),
             'grade': m.get('grade', ''),
-            'price': _price_num(mid),
             'su':    f"https://steamcommunity.com/market/listings/{APP_ID}/{quote(nm_en)}" if nm_en else '',
         })
     res = r.get('result', {})
@@ -558,11 +540,10 @@ for r in recipes_raw.get('crafting', []):
                          'ic': f"{WIKI_BASE}{it['icon']}" if it.get('icon') else '',
                          'bs': _bs, 'ih': _ih, 'pr': []}
                 by_name[en] = entry
-            # price for this grade (if marketable + priced)
-            p = prices.get(iid)
-            if it.get('marketable') and isinstance(p, dict) and p.get('lowest'):
+            # per-grade entry: store item id → ราคา lookup runtime (เฉพาะ marketable)
+            if it.get('marketable'):
                 entry['pr'].append({
-                    'g': grade_k, 'p': p['lowest'],
+                    'g': grade_k, 'id': iid,
                     'su': f"https://steamcommunity.com/market/listings/{APP_ID}/{quote(f'{en} ({grade_k.capitalize()}) A')}",
                 })
     for e in by_name.values():
@@ -682,10 +663,8 @@ def card_html(m):
             f'<span class="slot-lbl">{gb(slot_group["slot"], SLOT_GROUP_TH.get(slot_group["slot"], slot_group["slot"]))}</span>'
             f'{stat_rows}</div>'
         )
-    price_html = ''
-    if m['price']:
-        vol = f'<span class="price-vol">{VOL_ICON} {int(m["volume"]):,} sold</span>' if m['volume'] else ''
-        price_html = f'<div class="price-row"><span class="price-val">{m["price"]}</span>{vol}</div>'
+    # ราคาเติม runtime จาก prices.json (ดู fillPrices) — เฉพาะ marketable
+    price_html = f'<div class="price-row" data-pid="{m["id"]}"></div>' if m['marketable'] else ''
     steam = (f'<a class="steam-btn" href="{m["steam_url"]}" target="_blank" rel="noopener" title="Steam Market">'
              f'{STEAM_ICON}</a>') if m['marketable'] else ''
     return (
@@ -1733,6 +1712,30 @@ function jbiR(o, fn) {
 const DIFF_TH = {Normal:'ปกติ',Nightmare:'ฝันร้าย',Hell:'นรก',Torment:'ทรมาน',
                  NORMAL:'ปกติ',NIGHTMARE:'ฝันร้าย',HELL:'นรก',TORMENT:'ทรมาน'};
 function jdiff(d) { return jbi({e: d, t: (DIFF_TH[d] || d)}); }
+
+// ── Prices: โหลด runtime จาก prices.json (แยกออกจาก index.html กันราคาเก่าทับตอน commit) ──
+let PRICES = {}, PRICES_AT = '';
+const _VOLSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+const _THMON = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function priceNum(id) { const p = PRICES[id]; if (!p || !p.l) return 0; const n = parseFloat(String(p.l).replace(/[^\d.]/g,'')); return isNaN(n)?0:n; }
+function priceRowInner(id) {
+  const p = PRICES[id]; if (!p || !p.l) return '';
+  const vol = p.v ? `<span class="price-vol">${_VOLSVG} ${Number(p.v).toLocaleString('en')} sold</span>` : '';
+  return `<span class="price-val">${esc(p.l)}</span>${vol}`;
+}
+function fmtPriceDate(iso) {
+  const m = (iso||'').match(/^(\d+)-(\d+)-(\d+)T(\d+):(\d+)/);
+  if (!m) return '';
+  return `${+m[3]} ${_THMON[+m[2]-1]} ${String(+m[1]+543).slice(-2)} ${m[4]}:${m[5]}`;
+}
+function fillPrices() {
+  document.querySelectorAll('.price-row[data-pid]').forEach(el => { el.innerHTML = priceRowInner(el.dataset.pid); });
+  const dt = fmtPriceDate(PRICES_AT);
+  document.querySelectorAll('.price-date').forEach(el => { el.textContent = dt ? ('ราคา • อัพเดท ' + dt) : ''; });
+  if (document.querySelector('#gear-grid .card') && typeof applyGearFilter==='function') applyGearFilter();
+  if (document.querySelector('#craft-grid .craft-card') && typeof renderCraft==='function') renderCraft();
+}
+(function(){ fetch('prices.json').then(r=>r.json()).then(d=>{ PRICES=d||{}; PRICES_AT=d._at||''; fillPrices(); }).catch(()=>{}); })();
 // default Thai (body starts with lang-th); switch to EN only if saved
 (function(){ try {
   if (localStorage.getItem('tbh_lang') === 'en') document.body.classList.remove('lang-th');
@@ -2379,7 +2382,7 @@ function renderGearItems(list) {
             <span class="tag-type">${jbi({e:g.gt, t:(GEARTYPE_TH[g.gt]||g.gt)})}</span>
             <span class="tag-type">Lv.${g.lv}</span>
           </div>
-          ${g.pr ? `<div class="price-row"><span class="price-val">${esc(g.pr)}</span>${g.pv?`<span class="price-vol"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> ${Number(g.pv).toLocaleString('en')} sold</span>`:''}</div>` : ''}
+          ${(()=>{const pr=priceRowInner(g.id);return pr?`<div class="price-row">${pr}</div>`:'';})()}
         </div>
         <a class="steam-btn" href="${esc(g.su)}" target="_blank" rel="noopener" title="Steam Market">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.08 1.67-3.77 3.75-3.77 2.08 0 3.77 1.69 3.77 3.77s-1.69 3.77-3.77 3.77h-.087l-4.08 2.905c0 .052.004.103.004.154 0 1.56-1.258 2.826-2.818 2.826-1.364 0-2.504-.97-2.774-2.252L.189 14.4C1.179 19.836 6.016 24 11.979 24c6.627 0 12-5.373 12-12S18.606 0 11.979 0z"/></svg>
@@ -2410,12 +2413,12 @@ function renderCraft() {
   document.getElementById('craft-count').textContent = list.length;
   grid.innerHTML = list.map(r => {
     const i = CRAFT_DATA.indexOf(r);
-    const total = r.mats.reduce((s,m) => s + m.price * m.count, 0);
-    const anyMissing = r.mats.some(m => !m.price);
+    const total = r.mats.reduce((s,m) => s + priceNum(m.id) * m.count, 0);
+    const anyMissing = r.mats.some(m => !priceNum(m.id));
     const matRows = r.mats.map(m => {
-      const line = m.price * m.count;
+      const line = priceNum(m.id) * m.count;
       const gc = GRADE_HEX[m.grade] || '#94a3b8';
-      const priceTxt = m.price ? '฿' + line.toFixed(2) : '—';
+      const priceTxt = priceNum(m.id) ? '฿' + line.toFixed(2) : '—';
       return `<div class="craft-mat">
         <img class="craft-mat-icon" src="${esc(m.icon)}" alt="" style="border-color:${gc}55" onerror="this.style.opacity='.2'">
         <span class="craft-mat-name">${jbi(m.name)}</span>
@@ -2455,14 +2458,14 @@ function openCraftPossible(i) {
   const grid = r.poss.map(it => {
     const stats = [...(it.bs||[]).map(s=>['',s]), ...(it.ih||[]).map(s=>['green',s])];
     const statRows = stats.map(([cls,s]) => `<div class="cposs-stat"><span>${jbi(s.label)}</span><span class="cposs-stat-v ${cls}">${esc(s.value)}</span></div>`).join('');
-    const pr = it.pr || [];
-    // cheapest price as a chip on the collapsed row
-    const cheapest = pr.length ? pr.reduce((a,b) => parseFloat(b.p.replace(/[^\d.]/g,''))<parseFloat(a.p.replace(/[^\d.]/g,''))?b:a) : null;
-    const priceChip = cheapest ? `<span class="cposs-price">${esc(cheapest.p)}+</span>` : '';
+    // ราคา lookup runtime จาก PRICES (เฉพาะเกรดที่มีราคา)
+    const pr = (it.pr || []).filter(x => priceNum(x.id) > 0);
+    const cheapest = pr.length ? pr.reduce((a,b) => priceNum(b.id) < priceNum(a.id) ? b : a) : null;
+    const priceChip = cheapest ? `<span class="cposs-price">${esc(PRICES[cheapest.id].l)}+</span>` : '';
     const priceRows = pr.map(x => `<a class="cposs-pr" href="${esc(x.su)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
       <span class="grade-dot" style="background:${GRADE_HEX[x.g]||'#94a3b8'};margin-right:5px"></span>
       <span style="flex:1;color:${GRADE_HEX[x.g]||'#94a3b8'}">${jbi({e:x.g.charAt(0)+x.g.slice(1).toLowerCase(), t:(GRADE_TH[x.g]||x.g)})}</span>
-      <span class="cposs-pr-v">${esc(x.p)}</span>
+      <span class="cposs-pr-v">${esc(PRICES[x.id].l)}</span>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="#66c0f4" style="margin-left:5px;flex-shrink:0"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.08 1.67-3.77 3.75-3.77 2.08 0 3.77 1.69 3.77 3.77s-1.69 3.77-3.77 3.77h-.087l-4.08 2.905c0 .052.004.103.004.154 0 1.56-1.258 2.826-2.818 2.826-1.364 0-2.504-.97-2.774-2.252L.189 14.4C1.179 19.836 6.016 24 11.979 24c6.627 0 12-5.373 12-12S18.606 0 11.979 0z"/></svg>
     </a>`).join('');
     const hasDetail = statRows || priceRows;
@@ -3083,3 +3086,11 @@ out = f'{BASE}/index.html'
 with open(out, 'w', encoding='utf-8') as f:
     f.write(html)
 print(f'Saved: {out} ({len(html)//1024}KB)')
+
+# ── prices.json (served separately; โหลด runtime → ไม่ปนกับ index.html) ──
+served_prices = {str(k): {'l': v.get('lowest',''), 'v': v.get('volume','')}
+                 for k, v in prices.items() if isinstance(v, dict) and v.get('lowest')}
+served_prices['_at'] = prices_raw.get('_fetched_at', '')
+with open(f'{BASE}/prices.json', 'w', encoding='utf-8') as f:
+    json.dump(served_prices, f, ensure_ascii=False, separators=(',', ':'))
+print(f'Saved: {BASE}/prices.json ({len(served_prices)-1} priced items)')
