@@ -58,7 +58,7 @@ jobs:
       - name: Notify Discord on failure
         if: failure()
         run: |
-          MSG="⚠️ **TBH price update ล้มเหลว**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด: อัปเดต Secret \`STEAM_COOKIE\`"
+          MSG="⚠️ **TBH price update ล้มเหลว**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด อัปเดต Secret \`STEAM_COOKIE\` ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions\\n🍪 เอา steamLoginSecure ใหม่: เปิด steamcommunity.com (login อยู่) → F12 → Application → Cookies → steamLoginSecure"
           curl -s -H "Content-Type: application/json" \
             -d "{\"content\": \"$MSG\"}" \
             "${{ secrets.DISCORD_WEBHOOK }}"
