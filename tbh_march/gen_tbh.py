@@ -1735,7 +1735,7 @@ function fillPrices() {
   if (document.querySelector('#gear-grid .card') && typeof applyGearFilter==='function') applyGearFilter();
   if (document.querySelector('#craft-grid .craft-card') && typeof renderCraft==='function') renderCraft();
 }
-(function(){ fetch('prices.json').then(r=>r.json()).then(d=>{ PRICES=d||{}; PRICES_AT=d._at||''; fillPrices(); }).catch(()=>{}); })();
+(function(){ fetch('prices.json?t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(d=>{ PRICES=d||{}; PRICES_AT=d._at||''; fillPrices(); }).catch(()=>{}); })();
 // default Thai (body starts with lang-th); switch to EN only if saved
 (function(){ try {
   if (localStorage.getItem('tbh_lang') === 'en') document.body.classList.remove('lang-th');
