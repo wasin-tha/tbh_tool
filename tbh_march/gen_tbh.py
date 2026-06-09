@@ -455,6 +455,15 @@ for h in heroes_raw:
 import json as _json2
 HEROES_JSON = _json2.dumps(heroes_skills_data, ensure_ascii=False, separators=(',',':'))
 
+# ── Hero skill trees (level-gated, จาก wiki /heroes) — เติม URL ไอคอนเต็ม ──
+with open(f'{BASE}/tbh_hero_trees.json', encoding='utf-8') as f:
+    hero_trees_raw = _json2.load(f)
+for _h in hero_trees_raw:
+    for _t in _h['tree']:
+        for _n in _t['nodes']:
+            _n['icon'] = f"{WIKI_BASE}/game/skills/{_n['icon']}.png"
+HERO_TREES_JSON = _json2.dumps(hero_trees_raw, ensure_ascii=False, separators=(',',':'))
+
 # ── Monster element map (en name → attack elements) ───────────────────────────
 # จาก tbh_monsters.json (attackElements) — มอนบางตัวไม่มีข้อมูล element (attacks:null)
 monster_el = {}
@@ -1126,6 +1135,37 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .passive-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
 .passive-val  { font-size: 11px; color: var(--gold); font-weight: 700; margin-top: 2px; }
 .skill-card { cursor: pointer; }
+/* ── skill tree (level-gated) ── */
+.tree { display:flex; flex-direction:column; gap:10px; max-width:1000px; }
+.tier-row { display:flex; gap:14px; align-items:stretch; background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:12px; }
+.tier-gate { flex-shrink:0; width:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; background:color-mix(in srgb, var(--gc) 12%, var(--surf2)); border:1px solid color-mix(in srgb, var(--gc) 35%, var(--border)); }
+.tier-gate-lbl { font-size:9px; font-weight:700; letter-spacing:.1em; color:var(--muted); }
+.tier-gate-n { font-size:22px; font-weight:800; color:var(--gc); line-height:1; }
+.tier-nodes { display:flex; gap:9px; flex-wrap:wrap; flex:1; align-content:center; }
+.ntile { position:relative; width:120px; display:flex; flex-direction:column; align-items:center; gap:5px; background:var(--surf2); border:1px solid var(--border); border-top:3px solid var(--nc); border-radius:10px; padding:13px 8px 9px; cursor:pointer; font-family:inherit; transition:border-color .15s, transform .1s, box-shadow .15s; }
+.ntile:hover { border-color:var(--nc); transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.4); }
+.ntile-kind { position:absolute; top:5px; left:7px; font-size:8px; font-weight:800; letter-spacing:.04em; padding:1px 5px; border-radius:4px; }
+.ntile-kind.k-a { color:#fcd34d; background:rgba(252,211,77,.16); }
+.ntile-kind.k-p { color:#a78bfa; background:rgba(167,139,250,.16); }
+.ntile-ico { width:44px; height:44px; border-radius:9px; background:#0a101e; border:1px solid var(--border2); object-fit:contain; image-rendering:pixelated; margin-top:8px; }
+.ntile-name { font-size:11.5px; font-weight:700; color:#e2e8f0; text-align:center; line-height:1.25; }
+.ntile-max { font-size:10px; color:var(--muted); }
+.tree-note { font-size:12px; color:var(--muted); margin-top:14px; max-width:1000px; line-height:1.6; }
+/* node detail modal */
+.nd-hd { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+.nd-ico { width:54px; height:54px; border-radius:10px; background:#0a101e; border:1px solid var(--border2); object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
+.nd-name { font-size:1.1rem; font-weight:800; color:#f1f5f9; margin-bottom:6px; }
+.nd-desc { font-size:13px; color:#94a3b8; line-height:1.7; margin:0 0 14px; }
+.nd-info-grid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.nd-info { display:flex; flex-direction:column; gap:2px; background:var(--surf2); border:1px solid var(--border); border-radius:8px; padding:7px 12px; }
+.nd-info span { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.nd-info b { font-size:13px; color:var(--text); }
+.nd-tbl-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:7px; }
+.nd-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.nd-tbl td { padding:6px 12px; border-top:1px solid var(--border); }
+.nd-tbl td:first-child { color:var(--muted); }
+.nd-close { margin-top:16px; width:100%; padding:9px; background:var(--surf2); border:1px solid var(--border2); color:var(--text); border-radius:9px; font-family:inherit; font-weight:700; font-size:13px; cursor:pointer; }
+.nd-close:hover { border-color:var(--gold); color:var(--gold); }
 .skill-detail-ov { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:9999; opacity:0; pointer-events:none; transition:opacity .18s; }
 .skill-detail-ov.show { opacity:1; pointer-events:all; }
 .skill-detail-box { background:var(--surf); border:1px solid var(--border2); border-radius:14px; padding:24px; max-width:480px; width:calc(100% - 32px); max-height:85vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.7); transform:scale(.95); transition:transform .2s; }
@@ -1803,7 +1843,7 @@ TAB5 = """
 <div id="tab-skills" class="tab-pane">
 <div class="skills-wrap">
   <h1 class="page-title">Skills</h1>
-  <p class="page-sub">Active skills และ Passive skills ของแต่ละ class — กดที่ skill เพื่อดู detail</p>
+  <p class="page-sub"><span class="en">Skill tree by unlock level — pick a class, click a node for full scaling</span><span class="th">ต้นไม้สกิลเรียงตามเลเวลที่ปลดล็อก — เลือก class แล้วคลิก node เพื่อดูค่าทุกเลเวล</span></p>
   <div class="hero-nav" id="hero-nav"></div>
   <div id="skills-content"></div>
 </div></div>
@@ -3163,56 +3203,87 @@ function switchHero(key) {
 
 function fmtDmg(v) { if (!v) return '—'; const n = v / 100; return Number.isInteger(n) ? n + '%' : n.toFixed(1) + '%'; }
 
+const DMG_COLORS = { Physical:'#f87171', Fire:'#fb923c', Cold:'#67e8f9', Lightning:'#fde68a', Magic:'#c4b5fd', Heal:'#4ade80' };
+function skillVal(v, pct) { return pct ? v + '%' : v; }
+function skillTrigger(n) {
+  const a = n.act;
+  if (a && a.type === 'BASEATTACK_COUNT') return jbi({e:`Every ${a.value} basic attacks`, t:`ทุก ${a.value} การโจมตีปกติ`});
+  if (n.cd) return jbi({e:`Cooldown ${n.cd}s`, t:`คูลดาวน์ ${n.cd} วิ`});
+  if (a && a.value != null) return esc(String(a.type).toLowerCase().replace(/_/g,' ')) + ' ' + a.value;
+  return '';
+}
+
+// ── Skills tab = ต้นไม้สกิลตามเลเวล (level-gated) ──
 function renderHeroSkills(key) {
+  const tree = HERO_TREES.find(t => t.key === key);
   const h = HEROES_DATA.find(x => x.key === key);
-  if (!h) return;
   const el = document.getElementById('skills-content');
-  if (!el) return;
+  if (!tree || !el) return;
+  const col = (h && h.color) || '#e8c84a';
 
-  const dmgColors = { Physical:'#f87171', Fire:'#fb923c', Cold:'#67e8f9', Lightning:'#fde68a', Magic:'#c4b5fd', Heal:'#4ade80' };
+  el.innerHTML = `<div class="tree">` + tree.tree.map(tier => {
+    const tiles = tier.nodes.map(n => {
+      const isA = n.kind === 'a';
+      const name = isA ? esc(n.name) : jbi({e:n.en, t:n.th});
+      const dc = isA ? (DMG_COLORS[n.dtype] || '#94a3b8') : '#a78bfa';
+      return `<button class="ntile" style="--nc:${dc}" onclick="openNode(${key},${n.key})">
+          <span class="ntile-kind ${isA?'k-a':'k-p'}">${isA?jbi({e:'SKILL',t:'สกิล'}):jbi({e:'PASSIVE',t:'พาสซีฟ'})}</span>
+          <img class="ntile-ico" src="${esc(n.icon)}" alt="" onerror="this.style.opacity='.2'">
+          <span class="ntile-name">${name}</span>
+          <span class="ntile-max">${jbi({e:'max',t:'สูงสุด'})} ${n.max} ${jbi({e:'pts',t:'แต้ม'})}</span>
+        </button>`;
+    }).join('');
+    return `<div class="tier-row">
+        <div class="tier-gate" style="--gc:${col}"><span class="tier-gate-lbl">LV</span><span class="tier-gate-n">${tier.gate}</span></div>
+        <div class="tier-nodes">${tiles}</div>
+      </div>`;
+  }).join('') + `</div>
+    <p class="tree-note">${jbi({e:'Active skills show damage scaling from level 1 to max. Passive nodes show the cumulative bonus per point (max ×N).', t:'สกิล Active แสดงดาเมจตั้งแต่เลเวล 1 ถึงสูงสุด · Passive แสดงโบนัสสะสมต่อแต้ม (สูงสุด ×N)'})}</p>`;
+}
 
-  const activeCards = h.active.map(s => {
-    const dmgCol = dmgColors[s.dmg_type] || '#94a3b8';
-    const range = `${fmtDmg(s.lv1)}~${fmtDmg(s.lvmax)}`;  // Lv1→max ที่เล่นได้จริง
-    const desc = jbiR(s.desc, txt => esc((txt||'').replace(/\{0\}/g, range)));
+function openNode(heroKey, nodeKey) {
+  const tree = HERO_TREES.find(t => t.key === heroKey);
+  const n = tree && tree.tree.flatMap(t => t.nodes).find(x => x.key === nodeKey);
+  if (!n) return;
+  const box = document.getElementById('skill-detail-box');
+  let html;
+  if (n.kind === 'a') {
+    const dc = DMG_COLORS[n.dtype] || '#94a3b8';
+    const rng = `<strong style="color:${dc}">${skillVal(n.vals[0], n.pct)}–${skillVal(n.vals[n.vals.length-1], n.pct)}</strong>`;
+    const desc = esc(n.descTpl || '').replace(/\{0\}/g, rng);
     const tags = [
-      s.dmg_type ? `<span class="skill-tag" style="color:${dmgCol};border-color:${dmgCol}44;background:${dmgCol}18">${esc(s.dmg_type)}</span>` : '',
-      s.delivery ? `<span class="skill-tag" style="color:var(--muted);border-color:var(--border)">${esc(s.delivery)}</span>` : '',
+      n.dtype ? `<span class="skill-tag" style="color:${dc};border-color:${dc}44;background:${dc}18">${esc(n.dtype)}</span>` : '',
+      ...n.delivery.map(d => `<span class="skill-tag" style="color:var(--muted);border-color:var(--border)">${esc(d)}</span>`),
     ].filter(Boolean).join('');
-    return `<div class="skill-card" style="border-left:3px solid ${h.color}" onclick="openSkillDetail(${s.key},${h.key})">
-      <div class="skill-hd">
-        <img class="skill-icon" src="${esc(s.icon)}" alt="${esc(s.name.e)}" onerror="this.style.opacity='.2'">
-        <div>
-          <div class="skill-name">${jbi(s.name)}</div>
-          <div class="skill-tags">${tags}</div>
-        </div>
+    const info = [
+      [jbi({e:'Trigger',t:'เงื่อนไข'}), skillTrigger(n)],
+      n.cd ? [jbi({e:'Cooldown',t:'คูลดาวน์'}), n.cd + 's'] : null,
+      n.dur ? [jbi({e:'Duration',t:'ระยะเวลา'}), n.dur + 's'] : null,
+      n.range ? [jbi({e:'Range',t:'ระยะ'}), n.range] : null,
+    ].filter(Boolean).map(([k,v]) => `<div class="nd-info"><span>${k}</span><b>${v}</b></div>`).join('');
+    const rows = n.vals.map((v,i) => `<tr><td>Lv ${i+1}</td><td class="num" style="text-align:right;color:${dc};font-weight:700">${skillVal(v,n.pct)}</td></tr>`).join('');
+    html = `
+      <div class="nd-hd"><img class="nd-ico" src="${esc(n.icon)}" onerror="this.style.opacity='.2'">
+        <div><div class="nd-name">${esc(n.name)}</div><div class="skill-tags">${tags}</div></div></div>
+      ${desc ? `<p class="nd-desc">${desc}</p>` : ''}
+      <div class="nd-info-grid">${info}</div>
+      <div class="nd-tbl-lbl">${jbi({e:'Damage by level',t:'ดาเมจตามเลเวล'})}</div>
+      <table class="nd-tbl"><tbody>${rows}</tbody></table>`;
+  } else {
+    const rows = n.disps.map((v,i) => `<tr><td>Lv ${i+1}</td><td class="num" style="text-align:right;color:#a78bfa;font-weight:700">${esc(v)}</td></tr>`).join('');
+    html = `
+      <div class="nd-hd"><img class="nd-ico" src="${esc(n.icon)}" onerror="this.style.opacity='.2'">
+        <div><div class="nd-name">${jbi({e:n.en, t:n.th})}</div>
+          <div class="skill-tags"><span class="skill-tag" style="color:#a78bfa;border-color:#a78bfa44;background:#a78bfa18">${jbi({e:'Passive',t:'พาสซีฟ'})}</span></div></div></div>
+      <div class="nd-info-grid">
+        <div class="nd-info"><span>${jbi({e:'Per point',t:'ต่อแต้ม'})}</span><b>${esc(n.per)}</b></div>
+        <div class="nd-info"><span>${jbi({e:'Max total',t:'รวมสูงสุด'})}</span><b style="color:#a78bfa">${esc(n.total)} (×${n.max})</b></div>
       </div>
-      ${desc ? `<div class="skill-desc">${desc}</div>` : ''}
-      <div class="skill-dmg">
-        <span style="font-size:11px;color:var(--muted);font-weight:600">${jbi(s.trigger)}</span>
-        <span style="font-size:10px;color:var(--muted);font-style:italic">กดเพื่อดู detail</span>
-      </div>
-    </div>`;
-  }).join('');
-
-  const passiveCards = h.passive.map(p => {
-    const valStr = p.mod === 'FLAT' ? `+${p.value}` : `+${p.value / 10}%`;
-    return `<div class="passive-card" style="cursor:pointer" onclick="openPassiveDetail(${p.key},${h.key})">
-      <img class="passive-icon" src="${esc(p.icon)}" alt="${esc(p.name.e)}" onerror="this.style.opacity='.2'">
-      <div>
-        <div class="passive-name">${jbi(p.name)}</div>
-        <div class="passive-val">${valStr} <span class="en">per level</span><span class="th">ต่อเลเวล</span></div>
-        ${p.desc ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5">${jbi(p.desc)}</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="skills-section-lbl">Active Skills</div>
-    <div class="skill-grid">${activeCards || '<p style="color:var(--muted)">ไม่มีข้อมูล</p>'}</div>
-    <div class="skills-section-lbl">Passive Skills</div>
-    <div class="passive-grid">${passiveCards || '<p style="color:var(--muted)">ไม่มีข้อมูล</p>'}</div>
-  `;
+      <div class="nd-tbl-lbl">${jbi({e:'Cumulative by points',t:'โบนัสสะสมตามแต้ม'})}</div>
+      <table class="nd-tbl"><tbody>${rows}</tbody></table>`;
+  }
+  box.innerHTML = html + `<button class="nd-close" onclick="document.getElementById('skill-detail-ov').classList.remove('show')">${jbi({e:'Close',t:'ปิด'})}</button>`;
+  document.getElementById('skill-detail-ov').classList.add('show');
 }
 
 function openSkillDetail(skillKey, heroKey) {
@@ -3332,7 +3403,7 @@ JS_WITH_GEAR = JS.replace(
     f'const GEAR_DATA={GEAR_JSON};\n// ── Equipment ──'
 ).replace(
     '// ── Skills data ──',
-    f'const HEROES_DATA={HEROES_JSON};\n// ── Skills data ──'
+    f'const HEROES_DATA={HEROES_JSON};\nconst HERO_TREES={HERO_TREES_JSON};\n// ── Skills data ──'
 ).replace(
     '// ── Rune data ──',
     f'const RUNE_NODES={rune_nodes_json};\nconst RUNE_EDGES={rune_edges_json};\n// ── Rune data ──'
