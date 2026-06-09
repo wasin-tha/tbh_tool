@@ -1046,7 +1046,7 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .badge-free     { background:#052e16; color:#4ade80; border:1px solid #166534; }
 .badge-supporter{ background:#2d1900; color:#fcd34d; border:1px solid #92400e; }
 /* ── Pet cards (polished) ── */
-.petc { position:relative; display:flex; flex-direction:column; background:var(--surf); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; transition:border-color .2s, box-shadow .2s, transform .2s; }
+.petc { position:relative; display:flex; flex-direction:column; background:var(--surf); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; transition:border-color .2s, box-shadow .2s, transform .2s; content-visibility:auto; contain-intrinsic-size:auto 320px; }
 .petc:hover { border-color:var(--border2); box-shadow:0 8px 28px rgba(0,0,0,.45); transform:translateY(-2px); }
 .petc--priority  { --pk:#818cf8; }
 .petc--free      { --pk:#4ade80; }
@@ -1229,7 +1229,7 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 ════════════════════════════ */
 .craft-wrap { max-width:1600px; margin:0 auto; padding:24px 20px 60px; }
 .craft-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(360px,1fr)); gap:13px; }
-.craft-card { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.craft-card { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; content-visibility:auto; contain-intrinsic-size:auto 360px; }
 .craft-poss-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px; border:none; border-top:1px solid var(--border); background:var(--surf2); color:#a5b4fc; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; transition:background .15s; }
 .craft-poss-btn:hover { background:var(--border2); color:#c7d2fe; }
 .cposs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:7px; align-items:start; }
