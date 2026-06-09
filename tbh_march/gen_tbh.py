@@ -31,6 +31,9 @@ with open(f'{BASE}/tbh_stages.json', encoding='utf-8') as f:
     stages_raw = json.load(f)
 with open(f'{BASE}/tbh_stage_details.json', encoding='utf-8') as f:
     stage_details_raw = json.load(f)
+# totalHP ต่อด่าน (108 ด่าน farmable; ACTBOSS ไม่มี) — ใช้ใน Farm calculator
+with open(f'{BASE}/tbh_stage_hp.json', encoding='utf-8') as f:
+    stage_hp_raw = json.load(f)
 # (tbh_portal_map.json ไม่ได้ใช้แล้ว — เปลี่ยนเป็นตาราง stage จึงไม่ load)
 with open(f'{BASE}/tbh_pets.json', encoding='utf-8') as f:
     pets_raw = json.load(f)
@@ -499,6 +502,7 @@ for s in stages_raw:
         'kills':   s.get('kills') or None,
         'gold':  s.get('goldPerClear', 0),
         'exp':   s.get('expPerClear', 0),
+        'hp':    stage_hp_raw.get(str(s['key'])),  # totalHP (None สำหรับ ACTBOSS)
         'boss_el':      monster_el.get(((s.get('boss') or {}).get('name') or {}).get('en-US', ''), []),
         'boss_name':    ((s.get('boss') or {}).get('name') or {}).get('en-US', ''),
         'boss_bi':      biobj((s.get('boss') or {}).get('name')),
@@ -765,23 +769,38 @@ body.lang-th .lang-toggle .opt-th { color: #0a0a0a; }
   height: 52px; padding: 0 20px;
   background: rgba(2,6,23,.95); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0,0,0,.28);
 }
 .topbar-logo {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 9px;
   font-size: 15px; font-weight: 800; color: var(--gold);
   text-decoration: none; letter-spacing: -.02em;
   margin-right: 24px; white-space: nowrap; cursor: default;
 }
-.tab-nav { display: flex; gap: 2px; flex: 1; }
+.topbar-logo svg {
+  box-sizing: content-box; padding: 5px; border-radius: 8px;
+  background: rgba(232,200,74,.14); border: 1px solid rgba(232,200,74,.32); color: var(--gold);
+}
+.tab-nav { display: flex; gap: 3px; flex: 1; }
 .tab-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 16px; border-radius: 8px; border: none;
+  position: relative;
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 15px; border-radius: 9px; border: none;
   background: transparent; color: var(--muted);
   font-size: 13px; font-weight: 600; font-family: inherit;
-  cursor: pointer; transition: all .15s; white-space: nowrap;
+  cursor: pointer; transition: color .15s, background .15s, box-shadow .15s; white-space: nowrap;
 }
+.tab-btn svg { opacity: .65; transition: opacity .15s, color .15s; }
 .tab-btn:hover { color: var(--text); background: var(--surf2); }
-.tab-btn.active { color: var(--gold); background: rgba(232,200,74,.1); }
+.tab-btn:hover svg { opacity: 1; }
+.tab-btn:focus { outline: none; }
+.tab-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.tab-btn.active {
+  color: var(--gold);
+  background: linear-gradient(180deg, rgba(232,200,74,.17), rgba(232,200,74,.06));
+  box-shadow: inset 0 0 0 1px rgba(232,200,74,.32), 0 2px 8px rgba(232,200,74,.1);
+}
+.tab-btn.active svg { color: var(--gold); opacity: 1; }
 .topbar-actions { display: none; align-items: center; gap: 8px; margin-left: auto; }
 .topbar-actions.visible { display: flex; }
 
@@ -997,22 +1016,45 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
    TAB 3 — PET
 ════════════════════════════ */
 .pet-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 60px; }
-.pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 13px; }
-.pet-card { background: var(--surf); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; transition: border-color .2s, box-shadow .2s, transform .2s; }
-.pet-card:hover { border-color: var(--border2); box-shadow: 0 6px 24px rgba(0,0,0,.4); transform: translateY(-1px); }
-.pet-name { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
-.farm-box { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border); }
-.farm-box-header { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 8px; }
-.farm-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
-.farm-row + .farm-row { border-top: 1px solid var(--border); }
-.pet-unlock { display:flex; align-items:center; gap:6px; margin-top:6px; font-size:11px; color:#94a3b8; flex-wrap:wrap; }
-.unlock-lbl { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; background:var(--surf2); border:1px solid var(--border); border-radius:4px; padding:1px 6px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
-.unlock-count { color:var(--gold); font-weight:700; }
+.pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px,1fr)); gap: 14px; }
 .badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; white-space:nowrap; }
 .badge-priority { background:#312e81; color:#a5b4fc; border:1px solid #4338ca; }
 .badge-free     { background:#052e16; color:#4ade80; border:1px solid #166534; }
 .badge-supporter{ background:#2d1900; color:#fcd34d; border:1px solid #92400e; }
-.pet-grid { grid-template-columns: repeat(auto-fill, minmax(340px,1fr)) !important; }
+/* ── Pet cards (polished) ── */
+.petc { position:relative; display:flex; flex-direction:column; background:var(--surf); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; transition:border-color .2s, box-shadow .2s, transform .2s; }
+.petc:hover { border-color:var(--border2); box-shadow:0 8px 28px rgba(0,0,0,.45); transform:translateY(-2px); }
+.petc--priority  { --pk:#818cf8; }
+.petc--free      { --pk:#4ade80; }
+.petc--supporter { --pk:#fcd34d; }
+.petc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--pk); z-index:1; }
+.petc-top { display:flex; gap:13px; align-items:center; padding:18px 16px 13px; background:linear-gradient(180deg, color-mix(in srgb, var(--pk) 11%, transparent), transparent); }
+.petc-portrait { width:62px; height:62px; flex-shrink:0; border-radius:13px; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 38%, color-mix(in srgb,var(--pk) 24%, var(--surf2)), var(--surf2)); border:1px solid color-mix(in srgb,var(--pk) 38%, var(--border)); }
+.petc-portrait img { width:50px; height:50px; object-fit:contain; image-rendering:pixelated; }
+.petc-id { min-width:0; }
+.petc-name { font-size:16px; font-weight:700; color:#f1f5f9; margin-bottom:6px; }
+.petc-badges { display:flex; gap:5px; flex-wrap:wrap; }
+.petc-unlock { display:flex; align-items:center; gap:6px; margin:0 16px 13px; padding:7px 11px; background:var(--surf2); border-radius:8px; font-size:11.5px; color:var(--muted); flex-wrap:wrap; }
+.petc-unlock-ic { color:var(--pk); }
+.petc-unlock b { color:var(--text); font-weight:700; }
+.petc-unlock a { color:#60a5fa; text-decoration:none; }
+.petc-bonuses { display:flex; flex-wrap:wrap; gap:8px; padding:0 16px 14px; }
+.petc-chip { display:flex; flex-direction:column; gap:1px; background:var(--surf2); border:1px solid var(--border); border-left:3px solid var(--c); border-radius:8px; padding:6px 12px; }
+.petc-chip-v { font-size:15px; font-weight:800; color:var(--c); line-height:1.15; }
+.petc-chip-k { font-size:10.5px; color:var(--muted); }
+.petc-farm { margin-top:auto; border-top:1px solid var(--border); padding:11px 14px 13px; }
+.petc-farm-hd { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+.petc-frow { display:flex; align-items:center; gap:8px; padding:5px 6px; border-radius:6px; font-size:12px; }
+.petc-frow--best { background:color-mix(in srgb, var(--pk) 9%, transparent); }
+.petc-star { color:#fcd34d; font-size:11px; width:12px; flex-shrink:0; }
+.petc-star-sp { width:12px; flex-shrink:0; }
+.petc-fstage { font-weight:700; color:var(--text); min-width:40px; }
+.petc-fname { flex:1; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.petc-fdiff { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; white-space:nowrap; flex-shrink:0; }
+.petc-frate { font-weight:700; color:#818cf8; min-width:56px; text-align:right; white-space:nowrap; flex-shrink:0; }
+.petc-frate small { color:var(--muted); font-weight:400; }
+.petc-buy { margin-top:auto; border-top:1px solid var(--border); padding:14px 16px; font-size:12px; color:var(--muted); }
+.petc-buy a { color:#60a5fa; text-decoration:none; }
 
 /* ════════════════════════════
    TAB 4 — EQUIPMENT
@@ -1153,6 +1195,143 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .craft-odd { display:flex; align-items:center; gap:4px; font-size:11px; }
 .craft-odd-dot { width:8px; height:8px; border-radius:50%; }
 .craft-odd-pct { font-weight:700; font-family:'Fira Code',monospace; }
+
+/* ════════════════════════════
+   TAB — FARM
+════════════════════════════ */
+.farm-calc { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:18px 20px; margin-bottom:22px; }
+/* 2-column: inputs (left) + best result (right) */
+.farm-top { display:flex; gap:18px; align-items:stretch; flex-wrap:wrap; margin-bottom:22px; }
+.farm-top > .farm-calc { flex:1 1 460px; margin-bottom:0; }
+.farm-best-col { flex:1 1 330px; display:flex; }
+.farm-best-col .farm-best { width:100%; margin-bottom:0; display:flex; flex-direction:column; justify-content:flex-start; }
+.farm-best-empty { border-style:dashed !important; border-color:var(--border) !important; background:transparent !important; justify-content:center !important; align-items:center; }
+.fb-empty { color:var(--muted); font-size:13px; text-align:center; line-height:1.6; margin-top:10px; max-width:240px; }
+.fb-run-pct { flex-shrink:0; width:42px; text-align:right; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+.farm-row1 { display:flex; gap:22px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
+.farm-field { display:flex; flex-direction:column; gap:5px; }
+.farm-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+.farm-input { background:var(--surf2); border:1px solid var(--border); border-radius:7px; color:var(--text); font-size:14px; font-family:inherit; padding:7px 10px; height:36px; }
+.farm-input:focus { outline:none; border-color:var(--gold); }
+#farm-herolv, #farm-bonus { width:100px; }
+input.farm-input[type=number] { -moz-appearance:textfield; appearance:textfield; }
+input.farm-input[type=number]::-webkit-outer-spin-button,
+input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+/* แถบคาดบนกล่อง (header band) สลับ EXP/Gold เต็มขอบ */
+.farm-modetabs { display:flex; margin:-18px -20px 18px; border-bottom:1px solid var(--border); border-radius:var(--r) var(--r) 0 0; overflow:hidden; }
+.farm-modetab { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; background:var(--surf2); border:none; color:var(--muted); font-size:14px; font-weight:700; padding:13px 14px; cursor:pointer; font-family:inherit; transition:background .15s, color .15s; }
+.farm-modetab + .farm-modetab { border-left:1px solid var(--border); }
+.farm-modetab svg { width:17px; height:17px; flex-shrink:0; }
+.farm-modetab:hover { color:var(--text); background:var(--surf3, #20222c); }
+.farm-modetab.active[data-mode=exp]  { background:rgba(74,222,128,.12);  color:#4ade80; box-shadow:inset 0 -3px 0 #4ade80; }
+.farm-modetab.active[data-mode=gold] { background:rgba(252,211,77,.12); color:#fcd34d; box-shadow:inset 0 -3px 0 #fcd34d; }
+.fdd-dot { display:inline-block; width:9px; height:9px; border-radius:50%; flex-shrink:0; margin-right:7px; vertical-align:middle; }
+.farm-samples-hd, .farm-ref-hd { font-size:12px; font-weight:700; color:var(--text); margin-bottom:10px; }
+.farm-ref-hd { font-size:17px; margin-top:8px; }
+.farm-hint { font-weight:400; color:var(--muted); }
+.farm-sample { display:flex; gap:9px; align-items:center; margin-bottom:8px; }
+.farm-time { width:180px; flex-shrink:0; }
+.farm-del { width:26px; height:26px; flex-shrink:0; border:none; background:transparent; color:#f87171; font-size:20px; line-height:1; cursor:pointer; border-radius:6px; }
+.farm-del:hover { background:rgba(248,113,113,.15); }
+.farm-del-sp { width:26px; flex-shrink:0; }
+/* custom stage dropdown */
+.fdd { position:relative; flex:1; min-width:0; max-width:440px; }
+.fdd-difftabs { position:sticky; top:0; z-index:1; display:flex; gap:4px; padding:4px 4px 7px; margin:-5px -5px 4px; background:var(--surf); border-bottom:1px solid var(--border); }
+.fdd-difftab { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; background:var(--surf2); border:1px solid var(--border); color:var(--muted); font-size:11px; font-weight:700; padding:6px 4px; border-radius:6px; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.fdd-difftab .fdd-dot { margin-right:0; }
+.fdd-difftab:hover { color:var(--text); }
+.fdd-difftab.active { color:var(--dc); border-color:var(--dc); background:color-mix(in srgb, var(--dc) 16%, transparent); }
+.fdd-trigger { display:flex; align-items:center; gap:8px; width:100%; height:36px; background:var(--surf2); border:1px solid var(--border); color:var(--text); padding:0 11px; border-radius:7px; font-size:14px; font-family:inherit; cursor:pointer; text-align:left; }
+.fdd-trigger:hover { border-color:var(--gold-dim); }
+.fdd.open .fdd-trigger { border-color:var(--gold); }
+.fdd-cur { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fdd-ph { color:var(--muted); }
+.fdd-trigger svg { color:var(--muted); transition:transform .15s; flex-shrink:0; }
+.fdd.open .fdd-trigger svg { transform:rotate(180deg); color:var(--gold); }
+.fdd-panel { position:absolute; top:calc(100% + 4px); left:0; z-index:300; width:340px; max-width:88vw; background:var(--surf); border:1px solid var(--border2); border-radius:var(--r); box-shadow:0 12px 32px rgba(0,0,0,.6); display:none; max-height:340px; overflow-y:auto; padding:5px; }
+.fdd.open .fdd-panel { display:block; }
+.fdd-grp { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); padding:8px 10px 4px; }
+.fdd-opt { display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:var(--r-sm); font-size:13px; color:#cbd5e1; cursor:pointer; }
+.fdd-opt:hover { background:var(--surf2); color:var(--text); }
+.fdd-opt.active { background:rgba(232,200,74,.15); color:var(--gold); font-weight:700; }
+.fdd-opt-code { font-weight:700; min-width:32px; flex-shrink:0; }
+.fdd-opt-nm { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fdd-opt-lv { font-size:11px; color:var(--muted); flex-shrink:0; }
+.farm-add { margin-top:2px; font-size:12px; padding:5px 12px; }
+.farm-fitnote { margin-top:12px; font-size:12px; color:var(--muted); }
+.farm-fitnote.warn { color:#fbbf24; }
+.farm-best { border:1px solid; border-radius:var(--r); padding:18px 20px; margin-bottom:16px; }
+.farm-best-lbl { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
+.farm-best-stage { font-size:19px; font-weight:700; margin:4px 0 6px; }
+.farm-best-val { font-size:34px; font-weight:800; line-height:1.1; }
+.fb-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.fb-chip { display:flex; flex-direction:column; gap:2px; background:var(--surf2); border:1px solid var(--border); border-radius:9px; padding:7px 12px; }
+.fb-chip-k { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.fb-chip b { font-size:14px; }
+.fb-beats { font-size:12.5px; font-weight:600; margin-top:12px; }
+.fb-runners { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
+.fb-runners-hd { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
+.fb-run { display:flex; align-items:center; gap:9px; padding:5px 0; font-size:13px; }
+.fb-run + .fb-run { border-top:1px solid var(--border); }
+.fb-run-rank { flex-shrink:0; width:18px; height:18px; border-radius:50%; background:var(--surf2); color:var(--muted); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.fb-run-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fb-run-val { font-weight:700; flex-shrink:0; }
+.farm-table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:var(--r); }
+.farm-table { width:100%; border-collapse:collapse; font-size:13px; }
+.farm-table th { background:var(--surf2); color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:8px 12px; text-align:right; white-space:nowrap; }
+.farm-table td { padding:8px 12px; border-top:1px solid var(--border); }
+.farm-table .ft-rank { color:var(--muted); width:34px; text-align:center; }
+.farm-table .ft-stage { text-align:left; }
+.farm-table .ft-diff { text-align:left; white-space:nowrap; color:#cbd5e1; }
+.fb-runners-sub { font-weight:400; text-transform:none; letter-spacing:0; color:var(--muted); }
+.fb-run-tag { font-size:9px; font-weight:700; color:#93c5fd; background:rgba(147,197,253,.16); border:1px solid rgba(147,197,253,.4); padding:1px 5px; border-radius:4px; margin-left:6px; vertical-align:middle; }
+.farm-table .ft-num { text-align:right; white-space:nowrap; }
+.farm-table .ft-ph { font-weight:700; }
+.farm-results-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin:0 0 8px; }
+.farm-show { display:flex; align-items:center; gap:7px; font-weight:600; }
+.fdd-show { flex:0 0 auto; width:96px; }
+.fdd-show .fdd-trigger { height:32px; font-size:13px; }
+.fdd-show .fdd-panel { width:96px; }
+.fdd-show .fdd-opt { justify-content:center; }
+.ft-pctbest { white-space:nowrap; }
+.farm-table td.ft-pctbest { display:flex; align-items:center; justify-content:flex-end; gap:9px; }
+.ft-bar { display:inline-block; width:54px; height:6px; background:var(--surf2); border-radius:3px; overflow:hidden; flex-shrink:0; }
+.ft-bar-fill { display:block; height:100%; border-radius:3px; }
+.ft-pct-num { min-width:38px; text-align:right; font-variant-numeric:tabular-nums; }
+.ft-badge { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.05em; padding:2px 6px; border-radius:4px; margin-left:7px; vertical-align:middle; }
+.ft-badge-best { color:#0a0a0a; background:#4ade80; }
+.ft-badge-ceil { color:#93c5fd; background:rgba(147,197,253,.18); border:1px solid rgba(147,197,253,.5); }
+/* stage reference table (own difficulty selector) */
+.ref-diff { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:14px; }
+.ref-diff-btn { display:flex; align-items:center; background:transparent; border:1px solid var(--border); color:var(--muted); font-size:12px; font-weight:700; padding:5px 13px; border-radius:7px; cursor:pointer; font-family:inherit; }
+.ref-diff-btn .fdd-dot { margin-right:6px; }
+.ref-diff-btn:hover { color:var(--text); border-color:var(--border2); }
+.ref-diff-btn.active { color:var(--dc); border-color:var(--dc); background:color-mix(in srgb, var(--dc) 14%, transparent); }
+.stage-table .st-acthd td { background:var(--surf2); color:var(--text); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:7px 12px; }
+.stage-table .st-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; vertical-align:middle; }
+.stage-table .st-row { cursor:pointer; transition:background .1s; }
+.stage-table .st-row:hover { background:var(--surf2); }
+.stage-table .st-boss { background:rgba(248,113,113,.05); }
+.stage-table .st-boss:hover { background:rgba(248,113,113,.1); }
+.stage-table .st-code { font-weight:700; white-space:nowrap; }
+.stage-table .st-star { color:#fda4af; }
+.stage-table .st-name { width:100%; }
+.stage-table td { vertical-align:middle; }
+/* step labels + locked floor row */
+.farm-row-lbl { display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--muted); margin:14px 0 7px; }
+.farm-row-lbl:first-child { margin-top:0; }
+.farm-step { flex-shrink:0; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#0a0a0a; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.farm-floor { flex:1; min-width:0; max-width:440px; display:flex; align-items:center; gap:8px; height:36px; padding:0 11px; background:rgba(232,200,74,.07); border:1px dashed var(--gold-dim); border-radius:7px; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; }
+.farm-floor-tag { margin-left:auto; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--gold); background:rgba(232,200,74,.14); padding:2px 7px; border-radius:4px; }
+/* over-level penalty card */
+.farm-penalty-card { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:16px 20px; margin-bottom:22px; }
+.farm-pen-hd { font-size:15px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.farm-pen-txt { font-size:12.5px; color:var(--muted); line-height:1.6; margin:0 0 12px; }
+.farm-pen-note { font-size:12px; color:var(--muted); line-height:1.6; margin:12px 0 0; font-style:italic; }
+.pen-grid { display:flex; flex-wrap:wrap; gap:7px; }
+.pen-cell { flex:1; min-width:64px; text-align:center; background:var(--surf2); border:1px solid var(--border); border-radius:8px; padding:8px 6px; }
+.pen-sl { font-size:11px; color:var(--muted); margin-bottom:3px; }
+.pen-pct { font-size:17px; font-weight:800; }
 
 /* ════════════════════════════
    TAB — STAGES
@@ -1344,15 +1523,15 @@ TOPBAR = """
     </button>
     <button class="tab-btn" data-tab="craft" onclick="switchTab(this)">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-      <span class="en">Crafting</span><span class="th">คราฟต์</span>
+      Crafting
     </button>
     <button class="tab-btn" data-tab="pets" onclick="switchTab(this)">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/></svg>
       Pet
     </button>
-    <button class="tab-btn" data-tab="stages" onclick="switchTab(this)">
+    <button class="tab-btn" data-tab="farm" onclick="switchTab(this)">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
-      Stages
+      Farm
     </button>
     <button class="tab-btn" data-tab="runes" onclick="switchTab(this)">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -1362,23 +1541,13 @@ TOPBAR = """
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
       Skills
     </button>
-    <button class="tab-btn" data-tab="calc" onclick="switchTab(this)">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 17v-6m3 6V7m3 10v-4M3 21h18"/></svg>
-      Stage Calculator
-    </button>
-  </div>
-  <div class="topbar-actions" id="calc-actions">
-    <button class="btn btn-ghost" onclick="importData()">Import</button>
-    <button class="btn btn-ghost" onclick="exportData()">Export</button>
-    <button class="btn btn-primary" onclick="addStage()">+ เพิ่มด่าน</button>
   </div>
   <div class="lang-toggle" id="lang-toggle" onclick="toggleLang()" style="margin-left:12px" title="สลับภาษา / Switch language">
     <span class="lang-knob"></span>
     <span class="lang-opt opt-en">EN</span>
     <span class="lang-opt opt-th">ไทย</span>
   </div>
-</nav>
-<input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">"""
+</nav>"""
 
 TAB1_START = """
 <div id="tab-materials" class="tab-pane active">
@@ -1450,49 +1619,6 @@ TAB1_END = """
   </div>
 </div></div>"""
 
-TAB2 = """
-<div id="tab-calc" class="tab-pane">
-<div class="calc-wrap">
-  <h1 class="page-title">Stage Calculator</h1>
-  <p class="page-sub">คำนวณ EXP/s และ Gold/s ต่อด่าน — เพิ่มหลายด่านเพื่อเปรียบเทียบ</p>
-  <div class="controls" style="margin-bottom:20px;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px">
-    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:var(--muted)"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
-    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap">Default ทีม</span>
-    <input type="text" class="ctrl" list="comp-list" id="default-comp-input" placeholder="เช่น Tank+Mage" style="max-width:200px;font-size:13px;height:34px" oninput="updateDefaultComp(this.value)">
-    <span style="color:var(--muted);font-size:12px">รันใหม่ใช้ทีมนี้อัตโนมัติ</span>
-    <button class="btn btn-ghost" onclick="clearDefaultComp()" style="margin-left:auto">ล้าง</button>
-  </div>
-  <datalist id="comp-list"></datalist>
-  <div id="stages-container" style="display:flex;flex-direction:column;gap:16px"></div>
-  <div class="stage-empty" id="stage-empty">
-    <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="opacity:.3;margin-bottom:10px"><path d="M9 17v-6m3 6V7m3 10v-4M3 21h18"/></svg>
-    <p>ยังไม่มีด่าน กด <strong style="color:var(--gold)">+ เพิ่มด่าน</strong> เพื่อเริ่มต้น</p>
-  </div>
-  <div id="comparison-section" class="cmp-section" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <h2 id="cmp-title" style="font-size:16px;font-weight:700;color:var(--text)">สรุปผลด่าน</h2>
-      <div id="cmp-sort-btns" style="display:none;gap:6px;flex-wrap:wrap">
-        <button class="sort-btn active" data-sort="worth" onclick="setSort(this)">Worth</button>
-        <button class="sort-btn" data-sort="exp"   onclick="setSort(this)">EXP/s</button>
-        <button class="sort-btn" data-sort="gold"  onclick="setSort(this)">Gold/s</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto;border-radius:var(--r);border:1px solid var(--border)">
-      <table class="cmp-table">
-        <thead><tr>
-          <th class="cmp-th">ด่าน</th><th class="cmp-th">Difficulty</th>
-          <th class="cmp-th">ทีม</th>
-          <th class="cmp-th" id="cmp-th-worth" style="display:none;text-align:right">Worth</th>
-          <th class="cmp-th" style="text-align:right">EXP/s</th>
-          <th class="cmp-th" style="text-align:right">Gold/s</th>
-          <th class="cmp-th" style="text-align:right">รัน</th>
-          <th class="cmp-th" style="text-align:right">เฉลี่ย</th>
-        </tr></thead>
-        <tbody id="comparison-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div></div>"""
 
 TAB3 = """
 <div id="tab-pets" class="tab-pane">
@@ -1601,21 +1727,47 @@ TAB_CRAFT = """
   <div class="craft-grid" id="craft-grid"></div>
 </div></div>"""
 
-TAB_STAGES = """
-<div id="tab-stages" class="tab-pane">
+TAB_FARM = """
+<div id="tab-farm" class="tab-pane">
 <div class="stages-wrap">
-  <h1 class="page-title">Stages</h1>
-  <p class="page-sub">3 Acts · 4 Difficulties · 30 stages each — คลิกแถวเพื่อดู detail</p>
-  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;color:var(--muted)">
-    <span><span class="en">Level needed:</span><span class="th">เลเวลที่ต้องใช้:</span></span>
-    <span style="color:#93c5fd;background:#93c5fd18;border:1px solid #93c5fd44;padding:1px 7px;border-radius:4px;font-weight:700">N = <span class="en">Normal</span><span class="th">ปกติ</span></span>
-    <span style="color:#c4b5fd;background:#c4b5fd18;border:1px solid #c4b5fd44;padding:1px 7px;border-radius:4px;font-weight:700">NM = <span class="en">Nightmare</span><span class="th">ฝันร้าย</span></span>
-    <span style="color:#fdba74;background:#fdba7418;border:1px solid #fdba7444;padding:1px 7px;border-radius:4px;font-weight:700">H = <span class="en">Hell</span><span class="th">นรก</span></span>
-    <span style="color:#fda4af;background:#fda4af18;border:1px solid #fda4af44;padding:1px 7px;border-radius:4px;font-weight:700">T = <span class="en">Torment</span><span class="th">ทรมาน</span></span>
+  <h1 class="page-title"><span class="en">Farm Calculator</span><span class="th">เครื่องคิดฟาร์ม</span></h1>
+  <p class="page-sub"><span class="en">Enter clear times for a couple of stages — it ranks every stage by EXP (or Gold) per hour for your party.</span><span class="th">กรอกเวลาเคลียร์ไม่กี่ด่าน → จัดอันดับด่านที่ได้ EXP (หรือ Gold) ต่อชั่วโมงสูงสุดสำหรับทีมคุณ</span></p>
+
+  <div class="farm-top">
+  <div class="farm-calc">
+    <div class="farm-modetabs">
+      <button class="farm-modetab active" data-mode="exp" onclick="setFarmMode(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <span class="en">EXP / hour</span><span class="th">EXP / ชั่วโมง</span>
+      </button>
+      <button class="farm-modetab" data-mode="gold" onclick="setFarmMode(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M14.5 9.5c-.5-1-1.5-1.5-2.5-1.5-1.4 0-2.5.9-2.5 2s1.1 2 2.5 2 2.5.9 2.5 2-1.1 2-2.5 2c-1 0-2-.5-2.5-1.5M12 6.5v11"/></svg>
+        <span class="en">Gold / hour</span><span class="th">Gold / ชั่วโมง</span>
+      </button>
+    </div>
+    <div class="farm-row1">
+      <label class="farm-field" id="farm-herolv-field"><span class="farm-lbl"><span class="en">Hero level</span><span class="th">เลเวลฮีโร่</span></span>
+        <input id="farm-herolv" class="farm-input" type="number" min="1" max="120" value="1" oninput="computeFarm()"></label>
+      <label class="farm-field"><span class="farm-lbl" id="farm-bonus-lbl"><span class="en">EXP bonus %</span><span class="th">โบนัส EXP %</span></span>
+        <input id="farm-bonus" class="farm-input" type="number" min="0" step="1" value="0" oninput="onFarmBonus(this.value)"></label>
+    </div>
+    <div class="farm-samples-hd"><span class="en">Your clear times</span><span class="th">เวลาเคลียร์ของคุณ</span><span class="farm-hint"><span class="en"> — the calculator fits your team's damage from these (enter in seconds)</span><span class="th"> — ระบบจะคำนวณพลังตีทีมจากค่าเหล่านี้ (กรอกเป็นวินาที)</span></span></div>
+    <div id="farm-samples"></div>
+    <button class="btn btn-ghost farm-add" onclick="addFarmSample()">+ <span class="en">add stage</span><span class="th">เพิ่มด่าน</span></button>
+    <div class="farm-fitnote" id="farm-fitnote"></div>
   </div>
+  <div class="farm-best-col" id="farm-best"></div>
+  </div>
+
+  <div id="farm-results"></div>
+
+  <div id="farm-penalty"></div>
+
+  <div class="farm-ref-hd"><span class="en">All stage data</span><span class="th">ข้อมูลด่านทั้งหมด</span><span class="farm-hint"><span class="en"> — click a row for monsters &amp; drops</span><span class="th"> — คลิกแถวดูมอนสเตอร์และดรอป</span></span></div>
+  <div class="ref-diff" id="ref-diff"></div>
   <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
-    <div style="flex:1;min-width:320px">
-      <div class="stage-acts-grid" id="stage-acts-grid"></div>
+    <div style="flex:1;min-width:340px">
+      <div id="stage-acts-grid"></div>
     </div>
     <div style="flex:0 0 300px">
       <div id="stage-detail-panel"></div>
@@ -1678,10 +1830,9 @@ function toggleLang() {
   try { localStorage.setItem('tbh_lang', th ? 'th' : 'en'); } catch {}
   applyLangToSelects(th);
 }
-function applyLangToSelects(th) {
-  document.querySelectorAll('#stages-container option[data-en]').forEach(o => {
-    o.textContent = th ? o.dataset.th : o.dataset.en;
-  });
+function applyLangToSelects() {
+  // farm stage dropdowns แสดงชื่อด่านตามภาษา → rerender เมื่อสลับภาษา (ถ้า init แล้ว)
+  if (window.STAGE_MAP && document.getElementById('farm-samples')) renderFarmSamples();
 }
 function jbi(o) {
   if (o == null) return '';
@@ -1775,11 +1926,10 @@ function switchTab(btn) {
   const tab = btn.dataset.tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
-  document.getElementById('calc-actions').classList.toggle('visible', tab === 'calc');
   if (tab === 'pets') renderPets();
   if (tab === 'skills') initSkills();
   if (tab === 'runes')  initRuneTree();
-  if (tab === 'stages') initStages();
+  if (tab === 'farm')   initFarm();
   if (tab === 'craft')  initCraft();
 }
 
@@ -1934,7 +2084,7 @@ function renderPets() {
 
   grid.innerHTML = list.map(p => {
     const isSupporter = p.type === 'supporter';
-    const borderColor = p.priority ? '#4338ca' : isSupporter ? '#92400e' : 'var(--border2)';
+    const kind = p.priority ? 'priority' : isSupporter ? 'supporter' : 'free';
 
     const badges = [
       p.priority ? '<span class="badge badge-priority">★ Priority</span>' : '',
@@ -1942,49 +2092,45 @@ function renderPets() {
                   : '<span class="badge badge-free">ฟาร์มได้</span>',
     ].filter(Boolean).join('');
 
-    const bonusRows = p.bonus.map(b => {
+    const chips = p.bonus.map(b => {
       const pct = b.match(/\d+%/)?.[0] || '';
       const col = b.includes('Exp') ? '#4ade80' : b.includes('Gold') ? '#fcd34d' : '#a78bfa';
       const stem = b.replace(pct,'').trim();
-      return `<div class="slot-row">
-        <span class="stat-name">${jbi({e:stem, t:(PET_BONUS_TH[stem]||stem)})}</span>
-        <span class="stat-right"><span class="stat-val" style="color:${col}">${pct}</span></span>
+      return `<div class="petc-chip" style="--c:${col}">
+        <span class="petc-chip-v">${pct}</span>
+        <span class="petc-chip-k">${jbi({e:stem, t:(PET_BONUS_TH[stem]||stem)})}</span>
       </div>`;
     }).join('');
 
     const farmSection = p.bestFarm.length ? `
-      <div class="farm-box">
-        <div class="farm-box-header">${jbi({e:'Best Farm Locations',t:'จุดฟาร์มที่ดีที่สุด'})}</div>
-        ${p.bestFarm.map(f => `
-          <div class="farm-row">
-            <span class="num" style="font-size:12px;font-weight:700;color:var(--text);min-width:38px">${esc(f.stage)}</span>
-            <span style="font-size:11px;color:var(--muted);flex:1">${jbi({e:f.name,t:(STAGE_NAME_TH[f.name]||f.name)})}</span>
-            <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${DIFF_BG[f.diff]||''};color:${DIFF_COLOR[f.diff]||'var(--muted)'};white-space:nowrap">${jdiff(f.diff)}</span>
-            <span class="num" style="font-size:11px;font-weight:700;color:#818cf8;min-width:54px;text-align:right">${esc(f.perRun)}/run</span>
+      <div class="petc-farm">
+        <div class="petc-farm-hd">${jbi({e:'Best farm spots',t:'จุดฟาร์มที่ดีที่สุด'})}</div>
+        ${p.bestFarm.map((f, i) => `
+          <div class="petc-frow${i===0?' petc-frow--best':''}">
+            ${i===0 ? '<span class="petc-star">★</span>' : '<span class="petc-star-sp"></span>'}
+            <span class="petc-fstage num">${esc(f.stage)}</span>
+            <span class="petc-fname">${jbi({e:f.name,t:(STAGE_NAME_TH[f.name]||f.name)})}</span>
+            <span class="petc-fdiff" style="background:${DIFF_BG[f.diff]||''};color:${DIFF_COLOR[f.diff]||'var(--muted)'}">${jdiff(f.diff)}</span>
+            <span class="petc-frate num">${esc(f.perRun)}<small>/run</small></span>
           </div>`).join('')}
       </div>` : `
-      <div style="padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">
-        ซื้อได้จาก <a href="https://store.steampowered.com" target="_blank" style="color:#60a5fa;text-decoration:none">Steam Supporter Pack</a>
-      </div>`;
+      <div class="petc-buy">${jbi({e:'Buy from',t:'ซื้อได้จาก'})} <a href="https://store.steampowered.com/app/3678970" target="_blank">Steam Supporter Pack</a></div>`;
 
-    return `<article class="card" style="border-left:3px solid ${borderColor}">
-      <div class="card-hd">
-        <div class="icon-wrap" style="width:60px;height:60px;flex-shrink:0">
-          <img style="width:54px;height:54px;object-fit:contain;image-rendering:pixelated" src="${esc(p.img)}" alt="${esc(p.name)}" onerror="this.style.opacity='.3'">
-        </div>
-        <div class="card-meta">
-          <span class="item-name">${jbi({e:p.name, t:(PET_TH[p.name]||p.name)})}</span>
-          <div class="card-tags">${badges}</div>
-          ${(()=>{const m=p.unlock.match(/^Defeat ([\d,]+) × (.+)$/);return m?`<div class="pet-unlock"><span class="unlock-lbl">Unlock</span>${jbi({e:'Defeat',t:'กำจัด'})} <span class="unlock-count">${m[1]}</span> × ${jbi({e:m[2],t:(MONSTER_TH[m[2]]||m[2])})}</div>`:`<div class="pet-unlock"><span class="unlock-lbl">Unlock</span><a href="https://store.steampowered.com/app/3678970" target="_blank" style="color:#60a5fa;text-decoration:none">Steam Supporter Pack</a></div>`;})()}
+    const unlock = (()=>{const m=p.unlock.match(/^Defeat ([\d,]+) × (.+)$/);
+      return m ? `<div class="petc-unlock"><span class="petc-unlock-ic">⚔</span>${jbi({e:'Defeat',t:'กำจัด'})} <b>${m[1]}</b> × ${jbi({e:m[2],t:(MONSTER_TH[m[2]]||m[2])})}</div>`
+               : `<div class="petc-unlock"><span class="petc-unlock-ic">★</span><a href="https://store.steampowered.com/app/3678970" target="_blank">Steam Supporter Pack</a></div>`;})();
+
+    return `<article class="petc petc--${kind}">
+      <div class="petc-top">
+        <div class="petc-portrait"><img src="${esc(p.img)}" alt="${esc(p.name)}" onerror="this.style.opacity='.3'"></div>
+        <div class="petc-id">
+          <div class="petc-name">${jbi({e:p.name, t:(PET_TH[p.name]||p.name)})}</div>
+          <div class="petc-badges">${badges}</div>
         </div>
       </div>
-      <div class="card-stats">
-        <div class="slot-sec">
-          <span class="slot-lbl">${jbi({e:'Bonus',t:'โบนัส'})}</span>
-          ${bonusRows}
-        </div>
-        ${farmSection}
-      </div>
+      ${unlock}
+      <div class="petc-bonuses">${chips}</div>
+      ${farmSection}
     </article>`;
   }).join('');
 }
@@ -1992,26 +2138,7 @@ function renderPets() {
 // ── Stage Calculator ──────────────────────────────────────────────────────────
 const DIFF_CLS  = {Normal:'d-normal',Nightmare:'d-nightmare',Hell:'d-hell',Torment:'d-torment'};
 const DIFFICULTIES = ['Normal','Nightmare','Hell','Torment'];
-const STORAGE_KEY  = 'tbh_v4';
-let stages = [], stageIdCounter = 0, sortKey = 'worth', modalCb = null;
-let defaultComp = localStorage.getItem('tbh_defaultComp') || '';
-
-function updateDefaultComp(v) { defaultComp=v; localStorage.setItem('tbh_defaultComp',v); }
-function clearDefaultComp() {
-  defaultComp=''; localStorage.removeItem('tbh_defaultComp');
-  const el=document.getElementById('default-comp-input'); if(el)el.value='';
-}
-document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('default-comp-input'); if(el&&defaultComp)el.value=defaultComp; });
-
-function stageSelectHtml(selected) {
-  let h='';
-  for(let w=1;w<=3;w++){
-    h+=`<optgroup label="Act ${w}">`;
-    for(let s=1;s<=10;s++){const v=`${w}-${s}`;h+=`<option value="${v}" ${selected===v?'selected':''}>${v}</option>`;}
-    h+='</optgroup>';
-  }
-  return h;
-}
+let modalCb = null;
 
 const ICO_WARN=`<svg style="color:#f87171" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>`;
 const ICO_INFO=`<svg style="color:#818cf8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4m0 4h.01"/></svg>`;
@@ -2035,233 +2162,13 @@ function confirmModal(){closeModal();modalCb?.();}
 function closeModal(){document.getElementById('modal-ov').classList.remove('show');}
 function modalBg(e){if(e.target===document.getElementById('modal-ov'))closeModal();}
 
-function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({stages,stageIdCounter}));}catch{}}
-function load(){
-  try{
-    const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');
-    if(!d?.stages)return false;
-    stages=d.stages; stageIdCounter=d.stageIdCounter||stages.reduce((m,s)=>Math.max(m,s.id),0);
-    return true;
-  }catch{return false;}
-}
-function updateCompList(){
-  const vals=[...new Set(stages.flatMap(s=>s.runs.map(r=>r.comp?.trim()).filter(Boolean)))].sort();
-  document.getElementById('comp-list').innerHTML=vals.map(v=>`<option value="${esc(v)}"></option>`).join('');
-}
-function setSort(btn){
-  sortKey=btn.dataset.sort;
-  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.toggle('active',b===btn));
-  renderComparison();
-}
-function addStage(){const id=++stageIdCounter;stages.push({id,name:'1-1',difficulty:'Normal',runs:[]});renderAll();save();addRun(id);}
-function removeStage(id){
-  const s=stages.find(x=>x.id===id);
-  showConfirm({title:'ลบด่านนี้?',msg:`"${s?.name}" และรันทั้งหมดจะถูกลบถาวร`,confirmLabel:'ลบด่าน'},
-    ()=>{stages=stages.filter(x=>x.id!==id);renderAll();save();});
-}
-function addRun(sid){
-  const s=stages.find(x=>x.id===sid);if(!s)return;
-  s.runs.push({id:Date.now()+Math.random(),comp:defaultComp,startExp:'',endExp:'',startGold:'',endGold:'',time:'',recordedAt:new Date().toISOString()});
-  renderAll();save();
-}
-function removeRun(sid,rid){
-  const s=stages.find(x=>x.id===sid);if(!s)return;
-  const idx=s.runs.findIndex(r=>r.id===rid);
-  showConfirm({title:'ลบรันนี้?',msg:`รัน #${idx+1} จะถูกลบถาวร`,confirmLabel:'ลบรัน'},
-    ()=>{s.runs=s.runs.filter(r=>r.id!==rid);renderAll();save();});
-}
-function updateField(sid,rid,field,value){
-  const s=stages.find(x=>x.id===sid);if(!s)return;
-  const r=s.runs.find(x=>x.id===rid);if(!r)return;
-  r[field]=value;save();
-  const res=calcRun(r);
-  const pillsEl=document.getElementById(`pills-${rid}`);
-  if(pillsEl)pillsEl.innerHTML=res
-    ?`<div class="pill-e">EXP <strong class="num">${fmtInt(res.gainedExp)}</strong> &rarr; <strong class="num">${fmt(res.expPerSec)}/s</strong></div>
-      <div class="pill-g">Gold <strong class="num">${fmtInt(res.gainedGold)}</strong> &rarr; <strong class="num">${fmt(res.goldPerSec)}/s</strong></div>`:'';
-  const avg=calcStageAvg(s);
-  const avgEl=document.getElementById(`stage-avg-${sid}`);
-  if(avgEl)avgEl.innerHTML=avg
-    ?`<span class="chip" style="color:#4ade80">EXP <strong class="num">${fmt(avg.avgExpPerSec)}/s</strong></span>
-      <span class="chip" style="color:#fcd34d">Gold <strong class="num">${fmt(avg.avgGoldPerSec)}/s</strong></span>
-      <span class="chip" style="color:var(--muted)">${avg.count} รัน</span>`:'';
-  if(field==='time'){const el=document.getElementById(`time-fmt-${rid}`);if(el)el.textContent=fmtSec(+value);}
-  if(field==='comp'){
-    const el=document.getElementById(`comp-badge-${rid}`);
-    if(el)el.innerHTML=value.trim()?`<span class="comp-badge">${esc(value.trim())}</span>`:'';
-    updateCompList();
-  }
-  renderComparison();
-}
-function updateStageName(sid,v){const s=stages.find(x=>x.id===sid);if(s){s.name=v;renderAll();save();}}
-function updateDifficulty(sid,v){const s=stages.find(x=>x.id===sid);if(s){s.difficulty=v;renderAll();save();}}
-
-function calcRun(r){
-  if(!r.startExp||!r.endExp||!r.startGold||!r.endGold||!r.time)return null;
-  const se=+r.startExp,ee=+r.endExp,sg=+r.startGold,eg=+r.endGold,t=+r.time;
-  if([se,ee,sg,eg,t].some(isNaN)||t<=0)return null;
-  if(ee<se||eg<sg)return null;  // จบ < เริ่ม = พิมพ์ผิด ไม่นับ
-  return{gainedExp:ee-se,gainedGold:eg-sg,expPerSec:(ee-se)/t,goldPerSec:(eg-sg)/t,time:t};
-}
-function calcStageAvg(s){
-  const rs=s.runs.map(calcRun).filter(Boolean);if(!rs.length)return null;
-  const comps=[...new Set(s.runs.filter(r=>r.comp?.trim()).map(r=>r.comp.trim()))];
-  return{avgExpPerSec:rs.reduce((a,r)=>a+r.expPerSec,0)/rs.length,avgGoldPerSec:rs.reduce((a,r)=>a+r.goldPerSec,0)/rs.length,avgTime:rs.reduce((a,r)=>a+r.time,0)/rs.length,count:rs.length,comps};
-}
 function fmt(n,d=2){if(n==null||isNaN(n))return'—';return n.toLocaleString('en',{minimumFractionDigits:d,maximumFractionDigits:d});}
 function fmtInt(n){if(n==null||isNaN(n))return'—';return Math.round(n).toLocaleString('en');}
 function fmtSec(s){if(!s||isNaN(s)||s<=0)return'';const m=Math.floor(s/60),sec=Math.round(s%60);return m>0?`${m}:${String(sec).padStart(2,'0')} นาที`:`${sec} วิ`;}
 function fmtTs(iso){if(!iso)return'';try{const d=new Date(iso);return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;}catch{return'';}}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-let dragSrcId=null;
-function onDragStart(e,sid){if(!e.target.closest('.drag-handle')){e.preventDefault();return;}dragSrcId=sid;e.dataTransfer.effectAllowed='move';setTimeout(()=>e.target.closest('.card-stage')?.classList.add('dragging'),0);}
-function onDragEnd(e){e.target.closest('.card-stage')?.classList.remove('dragging');document.querySelectorAll('.card-stage').forEach(c=>c.classList.remove('drag-over'));}
-function onDragOver(e,sid){e.preventDefault();if(dragSrcId===sid)return;document.querySelectorAll('.card-stage').forEach(c=>c.classList.remove('drag-over'));e.currentTarget.classList.add('drag-over');}
-function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
-function onDrop(e,sid){
-  e.preventDefault();document.querySelectorAll('.card-stage').forEach(c=>c.classList.remove('drag-over'));
-  if(!dragSrcId||dragSrcId===sid)return;
-  const si=stages.findIndex(s=>s.id===dragSrcId),di=stages.findIndex(s=>s.id===sid);
-  if(si<0||di<0)return;
-  const[moved]=stages.splice(si,1);stages.splice(di,0,moved);
-  dragSrcId=null;renderAll();save();
-}
 
-function renderAll(){
-  const fEl=document.activeElement,fKey=fEl?.getAttribute('data-fk');
-  let selS,selE;try{selS=fEl?.selectionStart;selE=fEl?.selectionEnd;}catch{}
-  const container=document.getElementById('stages-container');
-  const empty=document.getElementById('stage-empty');
-  if(!stages.length){container.innerHTML='';empty.style.display='block';document.getElementById('comparison-section').style.display='none';return;}
-  empty.style.display='none';
-  container.innerHTML=stages.map(renderStage).join('');
-  updateCompList();renderComparison();
-  if(fKey){const el=document.querySelector(`[data-fk="${fKey}"]`);if(el){el.focus();try{if(typeof selS==='number')el.setSelectionRange(selS,selE);}catch{}}}
-}
-
-function renderComparison(){
-  const sec=document.getElementById('comparison-section');
-  if(!stages.length){sec.style.display='none';return;}
-  sec.style.display='block';
-  const isMulti=stages.length>=2;
-  document.getElementById('cmp-title').textContent=isMulti?'สรุปเปรียบเทียบด่าน':'สรุปผลด่าน';
-  document.getElementById('cmp-sort-btns').style.display=isMulti?'flex':'none';
-  document.getElementById('cmp-th-worth').style.display=isMulti?'':'none';
-  const entries=stages.map(s=>({stage:s,avg:calcStageAvg(s),worthScore:null}));
-  const withData=entries.filter(x=>x.avg);
-  if(withData.length>=2){
-    const eV=withData.map(x=>x.avg.avgExpPerSec),gV=withData.map(x=>x.avg.avgGoldPerSec);
-    const minE=Math.min(...eV),maxE=Math.max(...eV),minG=Math.min(...gV),maxG=Math.max(...gV);
-    const norm=(v,lo,hi)=>hi===lo?100:Math.round((v-lo)/(hi-lo)*100);
-    withData.forEach(x=>{x.worthScore=Math.round((norm(x.avg.avgExpPerSec,minE,maxE)+norm(x.avg.avgGoldPerSec,minG,maxG))/2);});
-  }else if(withData.length===1){withData[0].worthScore=100;}
-  const score=x=>{if(!x.avg)return-Infinity;if(sortKey==='exp')return x.avg.avgExpPerSec;if(sortKey==='gold')return x.avg.avgGoldPerSec;return x.worthScore??-Infinity;};
-  entries.sort((a,b)=>score(b)-score(a));
-  const topE=Math.max(...withData.map(x=>x.avg.avgExpPerSec),0);
-  const topG=Math.max(...withData.map(x=>x.avg.avgGoldPerSec),0);
-  document.getElementById('comparison-body').innerHTML=entries.map(({stage,avg,worthScore},i)=>{
-    const dc=DIFF_CLS[stage.difficulty]||'d-normal';
-    if(!avg)return`<tr class="row-nodata"><td class="cmp-td" style="font-weight:700">${esc(stage.name)}</td><td class="cmp-td"><span class="diff-badge ${dc}">${jdiff(stage.difficulty)}</span></td><td class="cmp-td" colspan="6" style="color:var(--muted);font-size:12px">ยังไม่มีข้อมูลรัน</td></tr>`;
-    const bE=avg.avgExpPerSec===topE,bG=avg.avgGoldPerSec===topG;
-    const rc=i===0&&sortKey==='worth'?'row-worth':i===0&&sortKey==='exp'?'row-exp':i===0&&sortKey==='gold'?'row-gold':'';
-    const ch=avg.comps?.length?avg.comps.map(c=>`<span class="comp-badge">${esc(c)}</span>`).join(' '):'<span style="color:var(--muted)">—</span>';
-    const ws=worthScore??'—';
-    const wb=typeof ws==='number'?`<span class="worth-bg"><span class="worth-fill" style="width:${ws}%"></span></span>`:'';
-    return`<tr class="${rc}">
-      <td class="cmp-td" style="font-weight:700">${esc(stage.name)}</td>
-      <td class="cmp-td"><span class="diff-badge ${dc}">${jdiff(stage.difficulty)}</span></td>
-      <td class="cmp-td">${ch}</td>
-      <td class="cmp-td" style="text-align:right;white-space:nowrap;${isMulti?'':'display:none'}"><span class="num" style="font-weight:700;color:#818cf8">${ws}</span>${wb}</td>
-      <td class="cmp-td num" style="text-align:right;font-weight:${bE?700:400};color:#4ade80">${fmt(avg.avgExpPerSec)}</td>
-      <td class="cmp-td num" style="text-align:right;font-weight:${bG?700:400};color:#fcd34d">${fmt(avg.avgGoldPerSec)}</td>
-      <td class="cmp-td num" style="text-align:right;color:var(--muted)">${avg.count}</td>
-      <td class="cmp-td num" style="text-align:right;color:var(--muted)">${fmt(avg.avgTime,1)}s</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderStage(stage){
-  const avg=calcStageAvg(stage),dc=DIFF_CLS[stage.difficulty]||'d-normal';
-  const _th=document.body.classList.contains('lang-th');
-  const opts=DIFFICULTIES.map(d=>`<option value="${d}" data-en="${d}" data-th="${DIFF_TH[d]||d}" ${stage.difficulty===d?'selected':''}>${_th?(DIFF_TH[d]||d):d}</option>`).join('');
-  const runs=stage.runs.map((run,idx)=>{
-    const res=calcRun(run),ts=fmtTs(run.recordedAt),sid=stage.id,rid=run.id;
-    return`<div class="card-run">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-size:12px;font-weight:700;color:var(--purple)">รัน #${idx+1}</span>
-          <span id="comp-badge-${rid}">${run.comp?`<span class="comp-badge">${esc(run.comp)}</span>`:''}</span>
-          ${ts?`<span class="ts-label">${ts}</span>`:''}
-        </div>
-        <button class="del" title="ลบรัน" onclick="removeRun(${sid},${rid})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="run-groups" style="display:grid;grid-template-columns:5fr 5fr 3fr 3fr;gap:8px;align-items:start">
-        <div class="grp grp-exp"><span class="grp-title">EXP</span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <div><label class="grp-lbl">เริ่ม</label><input type="number" class="ctrl" placeholder="0" value="${esc(run.startExp)}" data-fk="s${sid}r${rid}fstartExp" oninput="updateField(${sid},${rid},'startExp',this.value)"></div>
-            <div><label class="grp-lbl">จบ</label><input type="number" class="ctrl" placeholder="0" value="${esc(run.endExp)}" data-fk="s${sid}r${rid}fendExp" oninput="updateField(${sid},${rid},'endExp',this.value)"></div>
-          </div></div>
-        <div class="grp grp-gold"><span class="grp-title">Gold</span>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <div><label class="grp-lbl">เริ่ม</label><input type="number" class="ctrl" placeholder="0" value="${esc(run.startGold)}" data-fk="s${sid}r${rid}fstartGold" oninput="updateField(${sid},${rid},'startGold',this.value)"></div>
-            <div><label class="grp-lbl">จบ</label><input type="number" class="ctrl" placeholder="0" value="${esc(run.endGold)}" data-fk="s${sid}r${rid}fendGold" oninput="updateField(${sid},${rid},'endGold',this.value)"></div>
-          </div></div>
-        <div class="grp grp-time"><span class="grp-title">เวลา</span>
-          <label class="grp-lbl">วินาที (s)</label>
-          <input type="number" class="ctrl" placeholder="0" value="${esc(run.time)}" data-fk="s${sid}r${rid}ftime" oninput="updateField(${sid},${rid},'time',this.value)">
-          <div id="time-fmt-${rid}" class="num" style="font-size:11px;color:var(--blue);margin-top:4px;min-height:14px">${run.time?fmtSec(+run.time):''}</div>
-        </div>
-        <div class="grp grp-comp"><span class="grp-title">ทีม</span>
-          <label class="grp-lbl">Composition</label>
-          <input type="text" class="ctrl" placeholder="Tank+Mage" value="${esc(run.comp)}" list="comp-list" data-fk="s${sid}r${rid}fcomp" oninput="updateField(${sid},${rid},'comp',this.value)">
-        </div>
-      </div>
-      <div id="pills-${rid}" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        ${res?`<div class="pill-e">EXP <strong class="num">${fmtInt(res.gainedExp)}</strong> &rarr; <strong class="num">${fmt(res.expPerSec)}/s</strong></div>
-               <div class="pill-g">Gold <strong class="num">${fmtInt(res.gainedGold)}</strong> &rarr; <strong class="num">${fmt(res.goldPerSec)}/s</strong></div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-
-  return`<div class="card-stage" draggable="true"
-    ondragstart="onDragStart(event,${stage.id})" ondragend="onDragEnd(event)"
-    ondragover="onDragOver(event,${stage.id})" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${stage.id})">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;flex:1;min-width:0">
-        <div class="drag-handle" title="ลากเพื่อสลับตำแหน่ง">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
-        </div>
-        <select class="ctrl" style="width:110px;font-weight:700;font-size:14px" onchange="updateStageName(${stage.id},this.value)">${stageSelectHtml(stage.name)}</select>
-        <select class="ctrl" style="width:130px" onchange="updateDifficulty(${stage.id},this.value)">${opts}</select>
-        <span class="diff-badge ${dc}">${jdiff(stage.difficulty)}</span>
-        <div id="stage-avg-${stage.id}" style="display:flex;gap:7px;flex-wrap:wrap">
-          ${avg?`<span class="chip" style="color:#4ade80">EXP <strong class="num">${fmt(avg.avgExpPerSec)}/s</strong></span>
-                 <span class="chip" style="color:#fcd34d">Gold <strong class="num">${fmt(avg.avgGoldPerSec)}/s</strong></span>
-                 <span class="chip" style="color:var(--muted)">${avg.count} รัน</span>`:''}
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <button class="btn btn-green" onclick="addRun(${stage.id})">+ เพิ่มรัน</button>
-        <button class="del del-lg" title="ลบด่าน" onclick="removeStage(${stage.id})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-    </div>
-    ${runs}
-  </div>`;
-}
-
-function exportData(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({stages,stageIdCounter},null,2)],{type:'application/json'}));a.download='tbh-stages.json';a.click();}
-function importData(){document.getElementById('import-file').click();}
-function handleImport(e){
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d?.stages)throw 0;stages=d.stages;stageIdCounter=d.stageIdCounter||stages.reduce((m,s)=>Math.max(m,s.id),0);renderAll();save();}catch{showAlert({title:'นำเข้าไม่สำเร็จ',msg:'ไฟล์ JSON ไม่ถูกต้อง'});}};
-  r.readAsText(file);e.target.value='';
-}
 
 // ── Equipment ─────────────────────────────────────────────────────────────────
 const CLASS_MAP = {
@@ -2538,52 +2445,398 @@ const ACT_BG = {
 };
 const DIFF_PREFIX = {NORMAL:1, NIGHTMARE:2, HELL:3, TORMENT:4};
 
-function initStages() {
+// ── Farm Calculator ───────────────────────────────────────────────────────────
+let FARM_MODE = 'exp';        // 'exp' | 'gold'
+let FARM_DIFF = 'NORMAL';     // ระดับของเครื่องคิด
+let REF_DIFF  = 'NORMAL';     // ระดับของตารางข้อมูลด่านด้านล่าง (แยกจากเครื่องคิด)
+let farmSamples = [];         // [{act, no, t}] — เวลาเคลียร์ตัวอย่างที่ผู้ใช้กรอก
+let farmBonus = {exp:'0', gold:'0'};   // โบนัสแยกตามโหมด (gold ใช้ gold bonus, exp ใช้ exp bonus)
+let farmMaxShow = 15;                   // จำนวนแถวสูงสุดในตารางผลลัพธ์
+
+function initFarm() {
   if (stagesInitDone) return;
   stagesInitDone = true;
-
-  // Build stage lookup {key: stage}
   window.STAGE_MAP = {};
   STAGES_DATA.forEach(s => { STAGE_MAP[s.key] = s; });
-
+  // โหลดค่าที่บันทึกไว้ (localStorage) — ถ้าไม่มี ใช้ค่าเริ่ม (floor 1-1 + ceiling ว่าง)
+  if (!loadFarm()) farmSamples = [{act:1, no:1, t:''}, {act:null, no:null, t:''}];
+  applyFarmModeUI();
+  renderFarmSamples();
+  renderRefDiff();
   renderStageTable();
+  computeFarm();
+}
+
+// ── บันทึก/โหลดค่า Farm ลง localStorage (แยกตามเบราว์เซอร์ของแต่ละคน) ──
+function saveFarm() {
+  try {
+    localStorage.setItem('tbh_farm', JSON.stringify({
+      mode: FARM_MODE, diff: FARM_DIFF, refDiff: REF_DIFF,
+      hero: document.getElementById('farm-herolv').value,
+      bonus: farmBonus, samples: farmSamples, maxShow: farmMaxShow,
+    }));
+  } catch {}
+}
+function loadFarm() {
+  try {
+    const d = JSON.parse(localStorage.getItem('tbh_farm') || 'null');
+    if (!d) return false;
+    if (d.mode) FARM_MODE = d.mode;
+    if (d.diff) FARM_DIFF = d.diff;
+    if (d.refDiff) REF_DIFF = d.refDiff;
+    if (d.bonus) farmBonus = Object.assign({exp:'0', gold:'0'}, d.bonus);
+    if (typeof d.maxShow === 'number') farmMaxShow = d.maxShow;
+    if (Array.isArray(d.samples) && d.samples.length >= 2) farmSamples = d.samples;
+    if (d.hero != null) document.getElementById('farm-herolv').value = d.hero;
+    return Array.isArray(d.samples) && d.samples.length >= 2;
+  } catch { return false; }
+}
+// ปรับ UI ให้ตรงกับ FARM_MODE (mode tab, label โบนัส, ค่าโบนัส, ซ่อน hero level ตอน gold)
+function applyFarmModeUI() {
+  const gold = FARM_MODE === 'gold';
+  document.querySelectorAll('.farm-modetab').forEach(b => b.classList.toggle('active', b.dataset.mode === FARM_MODE));
+  document.getElementById('farm-bonus-lbl').innerHTML = gold ? jbi({e:'Gold bonus %', t:'โบนัส Gold %'}) : jbi({e:'EXP bonus %', t:'โบนัส EXP %'});
+  document.getElementById('farm-bonus').value = farmBonus[FARM_MODE];
+  document.getElementById('farm-herolv-field').style.display = gold ? 'none' : '';
+}
+
+// ข้อมูลจาก wiki: โทษ EXP เมื่อฮีโร่เลเวลเกินด่าน (ตารางปรับตามเลเวลฮีโร่)
+function renderPenaltyInfo(heroLv) {
+  const free = Math.trunc((Math.log(heroLv + 1) / 10 + 1) * 2);   // ช่วง gap ที่ยังได้ 100%
+  const cells = [0,2,4,6,8,10,12,15].map(g => {
+    const sl = heroLv - g;
+    if (sl < 1) return '';
+    const pct = Math.round(farmPenalty(heroLv, sl) * 100);
+    const col = pct >= 94 ? '#4ade80' : pct >= 50 ? '#fcd34d' : '#f87171';
+    return `<div class="pen-cell"><div class="pen-sl">${jbi({e:'Stage',t:'ด่าน'})} Lv${sl}<br><span style="opacity:.7">(-${g})</span></div><div class="pen-pct num" style="color:${col}">${pct}%</div></div>`;
+  }).filter(Boolean).join('');
+  document.getElementById('farm-penalty').innerHTML = `
+    <div class="farm-penalty-card">
+      <div class="farm-pen-hd">${jbi({e:'The hidden over-level EXP penalty', t:'โทษ EXP ที่ซ่อนอยู่เมื่อเลเวลเกินด่าน'})}</div>
+      <p class="farm-pen-txt">${jbi({
+        e:`When your hero's level is higher than a stage's level, the game quietly gives less EXP — and never shows it. This formula is reverse-engineered from the game's code and matches the real values to within 1% (i.e. very accurate, not "only 1%").`,
+        t:`เมื่อเลเวลฮีโร่สูงกว่าด่าน เกมจะลด EXP ให้เงียบๆ โดยไม่โชว์ในเกม สูตรนี้ถอดจาก code เกม และตรงกับค่าจริง คลาดเคลื่อนไม่เกิน 1% (คือแม่นมาก ไม่ใช่แม่นแค่ 1%)`})}</p>
+      <p class="farm-pen-txt" style="color:var(--text)"><strong>${jbi({
+        e:`At Lv ${heroLv}: you keep the full 100% EXP until your hero is more than ${free} levels above the stage. Past that, the further the gap, the steeper the drop:`,
+        t:`ที่ Lv ${heroLv}: ได้ EXP เต็ม 100% จนกว่าจะเกินด่านเกิน ${free} เลเวล — เกินจากนั้นยิ่งห่างยิ่งลดแรงขึ้นเรื่อยๆ:`})}</strong></p>
+      <div class="pen-grid">${cells}</div>
+      <p class="farm-pen-note">${jbi({e:"Being under-levelled (the stage is above your hero) is penalised too, but much more gently — you keep full EXP until you're well below the stage's level.", t:'ถ้าเลเวลต่ำกว่าด่าน ก็โดนลดเหมือนกัน แต่เบากว่ามาก — ยังได้ EXP เต็มจนกว่าจะต่ำกว่าด่านมากๆ'})}</p>
+    </div>`;
+}
+
+// over-level EXP penalty — ถอดจาก code เกม (ตรวจกับตาราง Lv30 ตรงทุกค่า)
+function farmPenalty(heroLv, stageLv) {
+  const over  = heroLv >= stageLv;
+  const floor = over ? 0.5 : 0.4;
+  const s     = Math.log(heroLv + 1) / 10 + 1;
+  const free  = Math.trunc(s * (over ? 2 : 5));
+  const fall  = Math.trunc(s * (over ? 5 : 6));
+  const gap   = Math.abs(heroLv - stageLv);
+  if (gap <= free) return 1;
+  if (gap <= free + fall) { const e = (gap - free) / fall; return Math.max(1 - (1 - floor) * e * e, 0.01); }
+  return Math.max(Math.pow(0.01 / floor, (gap - free - fall) / Math.max(heroLv / 3, 1)) * floor, 0.01);
+}
+
+// least-squares fit: clearTime ≈ a·totalHP + k·waves  (a = วิ/HP = 1/DPS, k = วิ/wave = overhead)
+function farmFit(pts) {
+  if (pts.length < 2) return null;
+  let hh=0, hw=0, ww=0, ht=0, wt=0;
+  for (const p of pts) { hh+=p.hp*p.hp; hw+=p.hp*p.waves; ww+=p.waves*p.waves; ht+=p.hp*p.T; wt+=p.waves*p.T; }
+  const det = hh*ww - hw*hw;
+  if (Math.abs(det) < 1e-6) return null;
+  let a = (ht*ww - wt*hw) / det;
+  let k = (hh*wt - hw*ht) / det;
+  if (k < 0) { k = 0; a = ht / hh; }   // overhead ติดลบ = ไม่สมเหตุผล → บังคับ 0
+  return (a > 0 && isFinite(a)) ? {a, k} : null;
+}
+
+function parseTime(v) { return Math.max(0, +v || 0); }   // วินาทีล้วน
+function plainName(st) {
+  const b = st.name_bi;
+  const th = document.body.classList.contains('lang-th');
+  if (b && typeof b === 'object') return th ? (b.t || b.e) : b.e;
+  return st.name;
+}
+
+// เลือกระดับจากใน dropdown ด่าน — เปลี่ยน global FARM_DIFF แล้วเปิด dropdown เดิมค้างไว้ให้เลือกด่านต่อ
+function pickDiffInline(i, d, ev) {
+  if (ev) ev.stopPropagation();
+  FARM_DIFF = d;
+  renderFarmSamples();
+  computeFarm();
+  document.querySelector('.fdd[data-fdd="' + i + '"]')?.classList.add('open');
+}
+// ── ระดับของตารางข้อมูลด่านด้านล่าง (แยกจากเครื่องคิด) ──
+function renderRefDiff() {
+  document.getElementById('ref-diff').innerHTML = Object.entries(DIFF_META).map(([d, m]) =>
+    `<button class="ref-diff-btn${d===REF_DIFF?' active':''}" style="--dc:${m.color}" onclick="setRefDiff('${d}')"><span class="fdd-dot" style="background:${m.color}"></span>${jdiff(m.label)}</button>`
+  ).join('');
+}
+function setRefDiff(d) { REF_DIFF = d; renderRefDiff(); renderStageTable(); saveFarm(); }
+function onFarmBonus(v) { farmBonus[FARM_MODE] = v; computeFarm(); }
+function setFarmMode(btn) {
+  FARM_MODE = btn.dataset.mode;
+  applyFarmModeUI();
+  computeFarm();
+}
+
+function farmStageLabel(act, no, diff) {
+  const st = STAGE_MAP[DIFF_PREFIX[diff || FARM_DIFF]*1000 + act*100 + no];
+  if (!st) return act + '-' + no;
+  return `<strong>${act}-${no}</strong> ${esc(plainName(st))} <span style="color:var(--muted)">Lv${st.level}</span>`;
+}
+function farmStageMenu(i) {
+  const cur = farmSamples[i];
+  // ── ระดับ (difficulty) เลือกได้ในนี้เลย — sticky ด้านบน ──
+  let h = `<div class="fdd-difftabs">` + Object.entries(DIFF_META).map(([d, m]) =>
+    `<button type="button" class="fdd-difftab${d===FARM_DIFF?' active':''}" style="--dc:${m.color}" onclick="pickDiffInline(${i},'${d}',event)"><span class="fdd-dot" style="background:${m.color}"></span>${jdiff(m.label)}</button>`
+  ).join('') + `</div>`;
+  for (let a = 1; a <= 3; a++) {
+    h += `<div class="fdd-grp">Act ${a}</div>`;
+    for (let n = 1; n <= 10; n++) {
+      const st = STAGE_MAP[DIFF_PREFIX[FARM_DIFF]*1000 + a*100 + n];
+      if (!st || st.hp == null || st.type === 'ACTBOSS') continue;
+      const on = (a===cur.act && n===cur.no) ? ' active' : '';
+      h += `<div class="fdd-opt${on}" onclick="pickFdd(${i},${a},${n})"><span class="fdd-opt-code">${a}-${n}</span><span class="fdd-opt-nm">${esc(plainName(st))}</span><span class="fdd-opt-lv">Lv${st.level}</span></div>`;
+    }
+  }
+  return h;
+}
+function renderFarmSamples() {
+  const ph = document.body.classList.contains('lang-th') ? 'วินาที' : 'seconds';
+  let out = '';
+  farmSamples.forEach((row, i) => {
+    const time = `<input class="farm-input farm-time" type="number" min="0" step="1" inputmode="numeric" placeholder="${esc(ph)}" value="${esc(row.t)}" oninput="farmSamples[${i}].t=this.value;computeFarm()">`;
+    if (i === 0) {  // ── floor: ล็อค Normal 1-1 (Lv1) เสมอ — วัด overhead ตอนตีตายในนัดเดียว ──
+      out += `<div class="farm-row-lbl"><span class="farm-step">1</span><span><strong>${jbi({e:'Time your 1-1 (Normal) clear', t:'จับเวลาเคลียร์ด่าน 1-1 (ปกติ)'})}</strong> — ${jbi({e:'you one-shot here, so it only measures running + spawn-wait. Type the seconds in the box on the right →', t:'ด่านนี้ตีตายในนัดเดียว เลยวัดแค่เวลาเดิน+รอมอนเกิด · ใส่จำนวนวินาทีในช่องขวา →'})}</span></div>
+        <div class="farm-sample">
+          <div class="farm-floor">${farmStageLabel(1, 1, 'NORMAL')}<span class="farm-floor-tag">${jbi({e:'fixed',t:'ล็อค'})}</span></div>
+          ${time}<span class="farm-del-sp"></span>
+        </div>`;
+      return;
+    }
+    if (i === 1) out += `<div class="farm-row-lbl"><span class="farm-step">2</span><span><strong>${jbi({e:'Pick the hardest stage you clear 100% + time it', t:'เลือกด่านยากสุดที่คุณเคลียร์ผ่าน 100% แล้วจับเวลา'})}</strong> — ${jbi({e:'choose a difficulty & stage from the menu, then type the clear time in seconds.', t:'เลือกระดับและด่านจากเมนู แล้วใส่เวลาเคลียร์เป็นวินาที'})}</span></div>`;
+    const canDel = farmSamples.length > 2;
+    out += `<div class="farm-sample">
+      <div class="fdd" data-fdd="${i}">
+        <button type="button" class="fdd-trigger" onclick="toggleFdd(event,${i})">
+          <span class="fdd-cur"><span class="fdd-dot" style="background:${DIFF_META[FARM_DIFF].color}"></span>${row.act == null ? `<span class="fdd-ph">${jbi({e:'Select a stage…', t:'เลือกด่าน…'})}</span>` : farmStageLabel(row.act, row.no)}</span>
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="fdd-panel">${farmStageMenu(i)}</div>
+      </div>
+      ${time}
+      ${canDel ? `<button class="farm-del" onclick="removeFarmSample(${i})" title="ลบ">&times;</button>` : '<span class="farm-del-sp"></span>'}
+    </div>`;
+  });
+  document.getElementById('farm-samples').innerHTML = out;
+}
+function toggleFdd(e, i) {
+  e.stopPropagation();
+  const el = document.querySelector(`.fdd[data-fdd="${i}"]`);
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.fdd.open').forEach(d => d.classList.remove('open'));
+  if (!wasOpen) {
+    el.classList.add('open');
+    el.querySelector('.fdd-opt.active')?.scrollIntoView({block:'nearest'});
+  }
+}
+function pickFdd(i, a, n) {
+  farmSamples[i].act = a; farmSamples[i].no = n;
+  renderFarmSamples();
+  computeFarm();
+}
+function pickMaxShow(v) { farmMaxShow = v; computeFarm(); }
+function farmBestPlaceholder() {
+  document.getElementById('farm-best').innerHTML =
+    `<div class="farm-best farm-best-empty"><div class="farm-best-lbl">★ ${jbi({e:'Best farm', t:'ฟาร์มคุ้มสุด'})}</div>` +
+    `<div class="fb-empty">${jbi({e:'Enter your two clear times on the left and the best stage will show here.', t:'กรอกเวลาเคลียร์ 2 ด่านด้านซ้ายให้ครบ แล้วด่านที่คุ้มสุดจะขึ้นตรงนี้'})}</div></div>`;
+}
+function addFarmSample() { farmSamples.push({act:null, no:null, t:''}); renderFarmSamples(); computeFarm(); }
+function removeFarmSample(i) { farmSamples.splice(i, 1); renderFarmSamples(); computeFarm(); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('.fdd')) document.querySelectorAll('.fdd.open').forEach(d => d.classList.remove('open'));
+});
+
+function computeFarm() {
+  const isGold = FARM_MODE === 'gold';
+  const heroLv = Math.max(1, +document.getElementById('farm-herolv').value || 1);
+  const bonus  = Math.max(0, +document.getElementById('farm-bonus').value || 0);
+  const Y = 1 + bonus / 100;
+  saveFarm();   // บันทึกทุกครั้งที่ค่าเปลี่ยน
+  const note = document.getElementById('farm-fitnote');
+  // over-level penalty ใช้เฉพาะ EXP → ซ่อนการ์ดตอน gold (gold ไม่มี penalty)
+  const penEl = document.getElementById('farm-penalty');
+  if (isGold) { penEl.style.display = 'none'; }
+  else { penEl.style.display = ''; renderPenaltyInfo(heroLv); }
+
+  const pts = [];
+  let ceilLv = 0;
+  farmSamples.forEach((row, i) => {
+    // floor (i=0) ล็อค Normal 1-1 เสมอ — วัด overhead จากด่านที่ตีตายในนัดเดียว
+    if (i !== 0 && row.act == null) return;   // ceiling ยังไม่เลือกด่าน
+    const st = i === 0 ? STAGE_MAP[1101] : STAGE_MAP[DIFF_PREFIX[FARM_DIFF]*1000 + row.act*100 + row.no];
+    const T = parseTime(row.t);
+    if (!st || st.hp == null || !(T > 0)) return;
+    pts.push({hp: st.hp, waves: st.waves, T});
+    if (i !== 0 && st.level > ceilLv) ceilLv = st.level;
+  });
+
+  const fit = farmFit(pts);
+  if (!fit) {
+    document.getElementById('farm-results').innerHTML = '';
+    farmBestPlaceholder();
+    note.className = 'farm-fitnote warn';
+    note.innerHTML = jbi({e:'⚠ Enter clear times for at least 2 stages with different HP (e.g. 1-1 and a hard stage).',
+                          t:'⚠ กรอกเวลาเคลียร์อย่างน้อย 2 ด่านที่ HP ต่างกัน (เช่น 1-1 กับด่านยาก) เพื่อคำนวณ'});
+    return;
+  }
+
+  const pool = STAGES_DATA.filter(s => s.diff === FARM_DIFF && s.type !== 'ACTBOSS' && s.hp != null && s.level <= ceilLv);
+  const rows = pool.map(s => {
+    const T   = fit.a * s.hp + fit.k * s.waves;
+    const pen = isGold ? 1 : farmPenalty(heroLv, s.level);
+    const base = isGold ? s.gold : s.exp;
+    const eff = base * pen * Y;
+    return {s, T, pen, eff, ph: T > 0 ? eff / T * 3600 : 0};
+  }).filter(r => r.ph > 0).sort((a, b) => b.ph - a.ph);
+
+  // fit quality (RMSE % เทียบเวลาที่กรอก)
+  let rmse = 0;
+  if (pts.length >= 2) {
+    const mean = pts.reduce((s, p) => s + p.T, 0) / pts.length;
+    const sse = pts.reduce((s, p) => s + Math.pow((fit.a*p.hp + fit.k*p.waves) - p.T, 2), 0) / pts.length;
+    rmse = mean > 0 ? Math.sqrt(sse) / mean * 100 : 0;
+  }
+  const dps = fit.a > 0 ? 1 / fit.a : 0;
+  note.className = 'farm-fitnote';
+  note.innerHTML = jbi({
+    e: `Fitted: ≈ ${fmtNum(Math.round(dps))} dmg/s · ${fit.k.toFixed(1)}s per wave overhead · fit ±${rmse.toFixed(0)}%`,
+    t: `คำนวณได้: ≈ ${fmtNum(Math.round(dps))} ดาเมจ/วิ · overhead ${fit.k.toFixed(1)} วิ/wave · ความแม่น ±${rmse.toFixed(0)}%`
+  });
+
+  renderFarmResults(rows);
+}
+
+function renderFarmResults(rows) {
+  const box = document.getElementById('farm-results');
+  const bestBox = document.getElementById('farm-best');
+  if (!rows.length) { box.innerHTML = ''; farmBestPlaceholder(); return; }
+  const isGold = FARM_MODE === 'gold';
+  const valLbl = isGold ? jbi({e:'Gold/hr', t:'Gold/ชม'}) : jbi({e:'EXP/hr', t:'EXP/ชม'});
+  const accent = isGold ? '#fcd34d' : '#4ade80';
+  const top = rows[0];
+  const shown = rows.slice(0, farmMaxShow);
+  // ceiling = ด่านที่ user เลือกเป็นตัวอย่าง (ด่านที่ผ่านสูงสุด) — ติด badge ในตาราง
+  const ceilKeys = new Set(farmSamples.filter((r, i) => i > 0 && r.act != null).map(r => DIFF_PREFIX[FARM_DIFF]*1000 + r.act*100 + r.no));
+  const ceilRows = rows.filter(r => ceilKeys.has(r.s.key));
+  const ceilRow = ceilRows.length ? ceilRows.reduce((a, b) => b.s.level > a.s.level ? b : a) : null;
+  const beatsPct = (ceilRow && ceilRow !== top) ? Math.round((top.ph / ceilRow.ph - 1) * 100) : 0;
+  const unit = isGold ? jbi({e:'gold',t:'gold'}) : jbi({e:'exp',t:'exp'});
+  const chips = `<div class="fb-chips">
+      <span class="fb-chip"><span class="fb-chip-k">${jbi({e:'Clear',t:'เคลียร์'})}</span><b>~${Math.round(top.T)}s</b></span>
+      <span class="fb-chip"><span class="fb-chip-k">${unit}/${jbi({e:'run',t:'รัน'})}</span><b>${fmtNum(Math.round(top.eff))}</b></span>
+      ${!isGold ? `<span class="fb-chip"><span class="fb-chip-k">${jbi({e:'EXP kept',t:'ได้ EXP'})}</span><b style="color:${top.pen>=0.94?'#4ade80':top.pen>=0.5?'#fcd34d':'#f87171'}">${Math.round(top.pen*100)}%</b></span>` : ''}
+    </div>`;
+  const beatsHtml = (beatsPct > 0) ? `<div class="fb-beats" style="color:${accent}">▲ ${jbi({e:`${beatsPct}% more than your max stage (${ceilRow.s.act}-${ceilRow.s.no})`, t:`ได้มากกว่าด่านที่ผ่านสูงสุด (${ceilRow.s.act}-${ceilRow.s.no}) ${beatsPct}%`})}</div>` : '';
+  const runners = rows.slice(1, 4).map((r, i) => `
+      <div class="fb-run">
+        <span class="fb-run-rank">${i+2}</span>
+        <span class="fb-run-name"><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${ceilKeys.has(r.s.key)?`<span class="fb-run-tag">${jbi({e:'your max',t:'ด่านสูงสุด'})}</span>`:''}</span>
+        <span class="fb-run-val" style="color:${accent}">${fmtNum(Math.round(r.ph))}</span>
+        <span class="fb-run-pct">${Math.round(r.ph / top.ph * 100)}%</span>
+      </div>`).join('');
+  const best = `
+    <div class="farm-best" style="border-color:${accent}55;background:${accent}10">
+      <div class="farm-best-lbl">★ ${jbi({e:'Best farm', t:'ฟาร์มคุ้มสุด'})}</div>
+      <div class="farm-best-stage">${top.s.act}-${top.s.no} <span style="font-weight:500;color:var(--muted)">${jbi(top.s.name_bi || top.s.name)}</span></div>
+      <div class="farm-best-val" style="color:${accent}">${fmtNum(Math.round(top.ph))} <span style="font-size:13px;color:var(--muted)">${valLbl}</span></div>
+      ${chips}
+      ${beatsHtml}
+      ${runners ? `<div class="fb-runners"><div class="fb-runners-hd">${jbi({e:'Runner-ups',t:'รองลงมา'})} <span class="fb-runners-sub">${jbi({e:'· EXP/hr · % of best',t:'· EXP/ชม · % เทียบ'})}</span></div>${runners}</div>` : ''}
+    </div>`;
+  const body = shown.map((r, i) => {
+    const pctBest = Math.round(r.ph / top.ph * 100);
+    const badges = (i === 0 ? `<span class="ft-badge ft-badge-best">${jbi({e:'BEST', t:'คุ้มสุด'})}</span>` : '')
+                 + (ceilKeys.has(r.s.key) ? `<span class="ft-badge ft-badge-ceil">${jbi({e:'MAX CLEARED', t:'ด่านที่ผ่านสูงสุด'})}</span>` : '');
+    return `
+    <tr${i===0?` style="background:${accent}0e"`:''}>
+      <td class="ft-rank">${i+1}</td>
+      <td class="ft-stage"><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${badges}</td>
+      <td class="ft-diff"><span class="fdd-dot" style="background:${DIFF_META[FARM_DIFF].color}"></span>${jdiff(DIFF_META[FARM_DIFF].label)}</td>
+      <td class="ft-num" style="color:#cbd5e1">Lv${r.s.level}</td>
+      <td class="ft-num">${Math.round(r.T)}s</td>
+      ${isGold ? '' : `<td class="ft-num" style="color:${r.pen>=0.94?'#4ade80':r.pen>=0.5?'#fcd34d':'#f87171'}">${Math.round(r.pen*100)}%</td>`}
+      <td class="ft-num">${fmtNum(Math.round(r.eff))}</td>
+      <td class="ft-num ft-ph" style="color:${accent}">${fmtNum(Math.round(r.ph))}</td>
+      <td class="ft-pctbest"><span class="ft-bar"><span class="ft-bar-fill" style="width:${pctBest}%;background:${accent}"></span></span><span class="ft-pct-num">${pctBest}%</span></td>
+    </tr>`;
+  }).join('');
+  const allTxt = document.body.classList.contains('lang-th') ? 'ทั้งหมด' : 'All';
+  const showLbl = v => v === 999 ? allTxt : v;
+  const showMenu = [10, 15, 20, 25, 30, 999].map(v =>
+    `<div class="fdd-opt${v===farmMaxShow?' active':''}" onclick="pickMaxShow(${v})">${showLbl(v)}</div>`).join('');
+  bestBox.innerHTML = best;
+  box.innerHTML = `
+    <div class="farm-results-bar">
+      <span>${jbi({e:`Showing top ${shown.length} of ${rows.length} stages`, t:`แสดง ${shown.length} จาก ${rows.length} ด่าน`})}</span>
+      <label class="farm-show">${jbi({e:'Show',t:'แสดงสูงสุด'})}
+        <div class="fdd fdd-show" data-fdd="maxshow">
+          <button type="button" class="fdd-trigger" onclick="toggleFdd(event,'maxshow')">
+            <span class="fdd-cur">${showLbl(farmMaxShow)}</span>
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="fdd-panel">${showMenu}</div>
+        </div></label>
+    </div>
+    <div class="farm-table-wrap">
+      <table class="farm-table">
+        <thead><tr>
+          <th>#</th><th style="text-align:left">${jbi({e:'Stage',t:'ด่าน'})}</th>
+          <th style="text-align:left">${jbi({e:'Tier',t:'ระดับ'})}</th><th>Lv</th>
+          <th>${jbi({e:'Clear',t:'เคลียร์'})}</th>
+          ${isGold ? '' : `<th>${jbi({e:'Keep',t:'ได้ EXP'})}</th>`}
+          <th>${isGold?'Gold':'EXP'}/${jbi({e:'run',t:'รัน'})}</th>
+          <th>${valLbl}</th>
+          <th>${jbi({e:'% of best',t:'% เทียบที่ดีสุด'})}</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
 }
 
 const DIFF_ABBR = {NORMAL:'N', NIGHTMARE:'NM', HELL:'H', TORMENT:'T'};
 
 function renderStageTable() {
-  const grid = document.getElementById('stage-acts-grid');
-  grid.innerHTML = '';
-
+  const diff = REF_DIFF, color = DIFF_META[diff].color;
+  let body = '';
   [1,2,3].forEach(act => {
-    const col = document.createElement('div');
-    col.className = 'stage-act-col';
-    col.innerHTML = `<div class="stage-act-hd">ACT ${act}</div>`;
-
+    body += `<tr class="st-acthd"><td colspan="6"><span class="st-dot" style="background:${color}"></span>ACT ${act} · ${jdiff(DIFF_META[diff].label)}</td></tr>`;
     for (let no = 1; no <= 10; no++) {
-      const normalKey = 1000 + act * 100 + no;
-      const s = STAGE_MAP[normalKey];
-      if (!s) continue;
-      const isBoss = s.type === 'ACTBOSS';
-
-      const lvBadges = Object.entries(DIFF_META).map(([diff, meta]) => {
-        const key = DIFF_PREFIX[diff] * 1000 + act * 100 + no;
-        const st = STAGE_MAP[key];
-        return st ? `<span class="sr-lv-badge" style="color:${meta.color};background:${meta.color}18;border:1px solid ${meta.color}44">${DIFF_ABBR[diff]}·${st.level}</span>` : '';
-      }).join('');
-
-      const row = document.createElement('div');
-      row.className = 'stage-row' + (isBoss ? ' boss-row' : '');
-      row.innerHTML = `
-        <span class="sr-id">${act}-${no}</span>
-        <span class="sr-name${isBoss?' boss':''}">${isBoss?'★ ':''}${jbi(s.name_bi||s.name)}</span>
-        <span class="sr-levels">${lvBadges}</span>`;
-      row.onclick = () => showStageDetail(s, DIFF_META.NORMAL.color);
-      col.appendChild(row);
+      const st = STAGE_MAP[DIFF_PREFIX[diff]*1000 + act*100 + no];
+      if (!st) continue;
+      const boss = st.type === 'ACTBOSS';
+      body += `<tr class="st-row${boss?' st-boss':''}" onclick="showStageDetail(STAGE_MAP[${st.key}], '${color}')">
+        <td class="st-code">${boss?'<span class="st-star">★</span> ':''}${act}-${no}</td>
+        <td class="st-name">${jbi(st.name_bi || st.name)}</td>
+        <td class="ft-num" style="color:#cbd5e1">Lv${st.level}</td>
+        <td class="ft-num">${fmtNum(st.hp)}</td>
+        <td class="ft-num" style="color:#4ade80">${fmtNum(st.exp)}</td>
+        <td class="ft-num" style="color:#fcd34d">${fmtNum(st.gold)}</td>
+      </tr>`;
     }
-    grid.appendChild(col);
   });
-
+  document.getElementById('stage-acts-grid').innerHTML = `
+    <div class="farm-table-wrap">
+      <table class="farm-table stage-table">
+        <thead><tr>
+          <th style="text-align:left">${jbi({e:'Stage',t:'ด่าน'})}</th>
+          <th style="text-align:left">${jbi({e:'Name',t:'ชื่อ'})}</th>
+          <th>Lv</th><th>HP</th><th>EXP</th><th>Gold</th>
+        </tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>`;
   document.getElementById('stage-detail-panel').innerHTML = '';
 }
 
@@ -3068,15 +3321,6 @@ switchTab = function(btn) {
     applyGearFilter();
   }
 };
-
-if(!load()){
-  const now=new Date().toISOString();
-  stages.push({id:++stageIdCounter,name:'3-9',difficulty:'Normal',runs:[{id:1,comp:'',startExp:'1660367',endExp:'2074913',startGold:'182584',endGold:'214582',time:'366',recordedAt:now}]});
-  stages.push({id:++stageIdCounter,name:'3-8',difficulty:'Normal',runs:[{id:2,comp:'',startExp:'',endExp:'',startGold:'',endGold:'',time:'',recordedAt:now}]});
-  stages.push({id:++stageIdCounter,name:'3-7',difficulty:'Normal',runs:[{id:3,comp:'',startExp:'1154186',endExp:'1458272',startGold:'153557',endGold:'172432',time:'319',recordedAt:now}]});
-  save();
-}
-renderAll();
 </script>
 </body>
 </html>"""
@@ -3110,7 +3354,7 @@ EFFECT_OPTIONS = ''.join(
 TAB1_START_FILLED = TAB1_START.replace('__EFFECT_OPTIONS__', EFFECT_OPTIONS)
 html = (HEAD + TOPBAR
         + TAB1_START_FILLED + str(COUNT) + TAB1_MID + CARDS_HTML + TAB1_END
-        + TAB4 + TAB_CRAFT + TAB3 + TAB_STAGES + TAB6_RUNES + TAB5 + TAB2 + MODAL + JS_WITH_GEAR)
+        + TAB4 + TAB_CRAFT + TAB3 + TAB_FARM + TAB6_RUNES + TAB5 + MODAL + JS_WITH_GEAR)
 
 out = f'{BASE}/index.html'
 with open(out, 'w', encoding='utf-8') as f:
