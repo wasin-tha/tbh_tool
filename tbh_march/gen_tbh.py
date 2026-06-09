@@ -1180,6 +1180,9 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .ntile-name { font-size:10.5px; font-weight:700; color:#e2e8f0; text-align:center; line-height:1.2; }
 .ntile-max { font-size:9px; color:var(--muted); }
 .tree-note { font-size:12px; color:var(--muted); margin-top:14px; max-width:1000px; line-height:1.6; }
+/* node hover tooltip */
+.ntip { position:fixed; z-index:9998; display:none; width:340px; max-width:calc(100vw - 20px); background:var(--surf); border:1px solid var(--border2); border-radius:12px; padding:16px 18px; box-shadow:0 16px 48px rgba(0,0,0,.6); pointer-events:none; }
+.ntip .nd-tbl-lbl { margin-top:4px; }
 /* node detail modal */
 .nd-hd { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
 .nd-ico { width:54px; height:54px; border-radius:10px; background:#0a101e; border:1px solid var(--border2); object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
@@ -1878,7 +1881,8 @@ TAB5 = """
 </div></div>
 <div class="skill-detail-ov" id="skill-detail-ov" onclick="closeSkillDetail(event)">
   <div class="skill-detail-box" id="skill-detail-box"></div>
-</div>"""
+</div>
+<div class="ntip" id="ntip"></div>"""
 
 MODAL = """
 <div class="modal-ov" id="modal-ov" onclick="modalBg(event)">
@@ -3302,7 +3306,7 @@ function renderHeroSkills(key) {
       const isA = n.kind === 'a';
       const name = isA ? jbi(n.name_bi) : jbi({e:n.en, t:n.th});
       const dc = isA ? (DMG_COLORS[n.dtype] || '#94a3b8') : '#a78bfa';
-      return `<button class="ntile" style="--nc:${dc}" onclick="openNode(${key},${n.key})">
+      return `<button class="ntile" style="--nc:${dc}" onmouseenter="showNodeTip(event,${key},${n.key})" onmouseleave="hideNodeTip()" onclick="event.stopPropagation();showNodeTip(event,${key},${n.key})">
           <span class="ntile-kind ${isA?'k-a':'k-p'}">${isA?jbi({e:'SKILL',t:'สกิล'}):jbi({e:'PASSIVE',t:'พาสซีฟ'})}</span>
           <img class="ntile-ico" src="${esc(n.icon)}" alt="" onerror="this.style.opacity='.2'">
           <span class="ntile-name">${name}</span>
@@ -3317,15 +3321,12 @@ function renderHeroSkills(key) {
     <p class="tree-note">${jbi({e:'Active skills show damage scaling from level 1 to max. Passive nodes show the cumulative bonus per point (max ×N).', t:'สกิล Active แสดงดาเมจตั้งแต่เลเวล 1 ถึงสูงสุด · Passive แสดงโบนัสสะสมต่อแต้ม (สูงสุด ×N)'})}</p>`;
 }
 
-function openNode(heroKey, nodeKey) {
-  const tree = HERO_TREES.find(t => t.key === heroKey);
-  const n = tree && tree.tree.flatMap(t => t.nodes).find(x => x.key === nodeKey);
-  if (!n) return;
-  const box = document.getElementById('skill-detail-box');
+function nodeDetailHtml(n) {
   let html;
   if (n.kind === 'a') {
     const dc = DMG_COLORS[n.dtype] || '#94a3b8';
-    const rng = `<strong style="color:${dc}">${skillVal(n.vals[0], n.pct)}–${skillVal(n.vals[n.vals.length-1], n.pct)}</strong>`;
+    // ค่าใน {0} ของ template = ช่วงตัวเลขล้วน (template มี % เอง สำหรับสกิล pct) — กัน % ซ้ำ
+    const rng = `<strong style="color:${dc}">${n.vals[0]}–${n.vals[n.vals.length-1]}</strong>`;
     const fillDesc = txt => esc(txt || '').replace(/\{0\}/g, rng);
     const desc = `<span class="en">${fillDesc(n.desc_bi.e)}</span><span class="th">${fillDesc(n.desc_bi.t)}</span>`;
     const tags = [
@@ -3359,9 +3360,28 @@ function openNode(heroKey, nodeKey) {
       <div class="nd-tbl-lbl">${jbi({e:'Cumulative by points',t:'โบนัสสะสมตามแต้ม'})}</div>
       <table class="nd-tbl"><tbody>${rows}</tbody></table>`;
   }
-  box.innerHTML = html + `<button class="nd-close" onclick="document.getElementById('skill-detail-ov').classList.remove('show')">${jbi({e:'Close',t:'ปิด'})}</button>`;
-  document.getElementById('skill-detail-ov').classList.add('show');
+  return html;
 }
+
+// hover (เดสก์ท็อป) / tap (มือถือ) → tooltip ลอยข้างๆ node
+function showNodeTip(ev, heroKey, nodeKey) {
+  const tree = HERO_TREES.find(t => t.key === heroKey);
+  const n = tree && tree.tree.flatMap(t => t.nodes).find(x => x.key === nodeKey);
+  if (!n) return;
+  const tip = document.getElementById('ntip');
+  tip.innerHTML = nodeDetailHtml(n);
+  tip.style.display = 'block';
+  const r = ev.currentTarget.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight, pad = 10;
+  let x = r.right + pad;
+  if (x + tw > innerWidth - pad) x = r.left - tw - pad;   // ไม่พอ → พลิกซ้าย
+  if (x < pad) x = Math.max(pad, innerWidth - tw - pad);
+  let y = Math.min(r.top, innerHeight - th - pad);
+  tip.style.left = Math.max(pad, x) + 'px';
+  tip.style.top  = Math.max(pad, y) + 'px';
+}
+function hideNodeTip() { const t = document.getElementById('ntip'); if (t) t.style.display = 'none'; }
+document.addEventListener('click', e => { if (!e.target.closest('.ntile')) hideNodeTip(); });
 
 function openSkillDetail(skillKey, heroKey) {
   const h = HEROES_DATA.find(x => x.key === heroKey);
