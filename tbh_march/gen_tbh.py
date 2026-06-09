@@ -922,6 +922,7 @@ body.lang-th .lang-toggle .opt-th { color: #0a0a0a; }
   background: var(--surf); border: 1px solid var(--border);
   border-radius: var(--r); overflow: hidden; cursor: default;
   transition: border-color .2s, box-shadow .2s, transform .2s;
+  content-visibility: auto; contain-intrinsic-size: auto 240px;  /* ข้าม render การ์ดนอกจอ (gear 1960 ใบ) */
 }
 .card:hover { border-color: var(--border2); box-shadow: 0 8px 28px rgba(0,0,0,.5); transform: translateY(-2px); }
 .card-hd { display: flex; align-items: flex-start; gap: 11px; padding: 13px 13px 11px; border-bottom: 1px solid var(--border); }
@@ -1739,7 +1740,7 @@ TAB4 = """
   <div class="controls" style="margin-bottom:16px">
     <div class="search-row" style="margin-bottom:10px">
       <span class="search-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
-      <input class="search-input" id="gear-search" type="search" placeholder="ค้นหาชื่อ gear หรือ unique mod..." oninput="applyGearFilter()">
+      <input class="search-input" id="gear-search" type="search" placeholder="ค้นหาชื่อ gear หรือ unique mod..." oninput="debouncedGearFilter()">
     </div>
     <div class="filter-rows">
       <div class="filter-group">
@@ -2003,7 +2004,7 @@ function fillPrices() {
   document.querySelectorAll('.price-row[data-pid]').forEach(el => { el.innerHTML = priceRowInner(el.dataset.pid); });
   const dt = fmtPriceDate(PRICES_AT);
   document.querySelectorAll('.price-date').forEach(el => { el.textContent = dt ? ('ราคา • อัพเดท ' + dt) : ''; });
-  if (document.querySelector('#gear-grid .card') && typeof applyGearFilter==='function') applyGearFilter();
+  // gear: เติมราคาในที่ผ่าน .price-row[data-pid] ด้านบนแล้ว (ไม่ต้อง re-render การ์ด 1960 ใบ)
   if (document.querySelector('#craft-grid .craft-card') && typeof renderCraft==='function') renderCraft();
 }
 (function(){ fetch('prices.json?t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(d=>{ PRICES=d||{}; PRICES_AT=d._at||''; fillPrices(); }).catch(()=>{}); })();
@@ -2359,6 +2360,8 @@ function toggleGearUnique() {
   applyGearFilter();
 }
 
+let _gearTimer;
+function debouncedGearFilter() { clearTimeout(_gearTimer); _gearTimer = setTimeout(applyGearFilter, 180); }
 function applyGearFilter() {
   gearFilterQ = (document.getElementById('gear-search')?.value||'').toLowerCase();
   const LEG_PLUS = ['LEGENDARY','IMMORTAL','ARCANA','BEYOND','CELESTIAL','DIVINE','COSMIC'];
@@ -2409,7 +2412,7 @@ function renderGearItems(list) {
             <span class="tag-type">${jbi({e:g.gt, t:(GEARTYPE_TH[g.gt]||g.gt)})}</span>
             <span class="tag-type">Lv.${g.lv}</span>
           </div>
-          ${(()=>{const pr=priceRowInner(g.id);return pr?`<div class="price-row">${pr}</div>`:'';})()}
+          <div class="price-row" data-pid="${g.id}">${priceRowInner(g.id)}</div>
         </div>
         <a class="steam-btn" href="${esc(g.su)}" target="_blank" rel="noopener" title="Steam Market">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V9c0-2.08 1.67-3.77 3.75-3.77 2.08 0 3.77 1.69 3.77 3.77s-1.69 3.77-3.77 3.77h-.087l-4.08 2.905c0 .052.004.103.004.154 0 1.56-1.258 2.826-2.818 2.826-1.364 0-2.504-.97-2.774-2.252L.189 14.4C1.179 19.836 6.016 24 11.979 24c6.627 0 12-5.373 12-12S18.606 0 11.979 0z"/></svg>
