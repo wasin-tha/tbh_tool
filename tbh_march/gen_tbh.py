@@ -448,20 +448,32 @@ for h in heroes_raw:
         'key': hero_key, 'name': name_en, 'name_bi': name_bi, 'class': cls,
         'desc': desc_bi,
         'icon': f"{WIKI_BASE}{h['icon']}" if h.get('icon') else '',
+        'art': f"https://taskbarherowiki.com/icons/HeroArt_{hero_key}.png",
         'color': HERO_COLORS.get(cls, '#8b94a7'),
+        'mainW': h.get('MainWeaponGearType', ''), 'subW': h.get('SubWeaponGearType', ''),
+        'unlock': h.get('UnlockCost'),
+        'stats': {k: h.get(k) for k in ('MaxHp','Armor','AttackDamage','AttackSpeed','CastSpeed','CriticalChance','CriticalDamage','CooldownReduction','MovementSpeed')},
         'active': active, 'passive': passive,
     })
 
 import json as _json2
 HEROES_JSON = _json2.dumps(heroes_skills_data, ensure_ascii=False, separators=(',',':'))
 
-# ── Hero skill trees (level-gated, จาก wiki /heroes) — เติม URL ไอคอนเต็ม ──
+# ── Hero skill trees (level-gated, จาก wiki /heroes) — เติม URL ไอคอน + ชื่อ/คำอธิบายไทย ──
 with open(f'{BASE}/tbh_hero_trees.json', encoding='utf-8') as f:
     hero_trees_raw = _json2.load(f)
+with open(f'{BASE}/tbh_skill_th.json', encoding='utf-8') as f:
+    _skill_th = _json2.load(f)   # {'names':{key:{en,th}}, 'descs':{key:{en,th}}}
 for _h in hero_trees_raw:
     for _t in _h['tree']:
         for _n in _t['nodes']:
             _n['icon'] = f"{WIKI_BASE}/game/skills/{_n['icon']}.png"
+            if _n['kind'] == 'a':   # active: ใส่ชื่อ/คำอธิบายไทย (จาก wiki /skills)
+                _k = str(_n['key'])
+                _nm = _skill_th['names'].get(_k, {})
+                _de = _skill_th['descs'].get(_k, {})
+                _n['name_bi'] = {'e': _n.get('name', ''), 't': _nm.get('th') or _n.get('name', '')}
+                _n['desc_bi'] = {'e': _n.get('descTpl', ''), 't': _de.get('th') or _n.get('descTpl', '')}
 HERO_TREES_JSON = _json2.dumps(hero_trees_raw, ensure_ascii=False, separators=(',',':'))
 
 # ── Monster element map (en name → attack elements) ───────────────────────────
@@ -1135,21 +1147,38 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .passive-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
 .passive-val  { font-size: 11px; color: var(--gold); font-weight: 700; margin-top: 2px; }
 .skill-card { cursor: pointer; }
+/* ── hero info card ── */
+.hero-info { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:16px 18px; margin-bottom:16px; max-width:1000px; }
+.hi-top { display:flex; gap:14px; align-items:flex-start; }
+.hi-portrait { width:64px; height:64px; border-radius:10px; background:#0a101e; border:1px solid color-mix(in srgb,var(--hc) 40%,var(--border2)); object-fit:contain; image-rendering:pixelated; flex-shrink:0; }
+.hi-meta { flex:1; min-width:0; }
+.hi-name { font-size:18px; font-weight:800; color:var(--hc); }
+.hi-desc { font-size:12.5px; color:#94a3b8; line-height:1.6; margin:4px 0 8px; }
+.hi-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.hi-chip { font-size:11px; font-weight:600; color:#cbd5e1; background:var(--surf2); border:1px solid var(--border); border-radius:20px; padding:3px 11px; }
+.hi-art { width:120px; height:150px; object-fit:contain; image-rendering:pixelated; flex-shrink:0; align-self:center; }
+.hi-attr-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:14px 0 8px; }
+.hi-attr-note { font-weight:400; text-transform:none; letter-spacing:0; }
+.hi-attrs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.hi-attr { display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--surf2); border:1px solid var(--border); border-radius:7px; padding:7px 11px; font-size:12.5px; }
+.hi-attr span { color:var(--muted); }
+.hi-attr b { color:var(--text); font-weight:700; }
+@media(max-width:560px){ .hi-art{display:none} .hi-attrs{grid-template-columns:repeat(2,1fr)} }
 /* ── skill tree (level-gated) ── */
-.tree { display:flex; flex-direction:column; gap:10px; max-width:1000px; }
-.tier-row { display:flex; gap:14px; align-items:stretch; background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:12px; }
-.tier-gate { flex-shrink:0; width:54px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:10px; background:color-mix(in srgb, var(--gc) 12%, var(--surf2)); border:1px solid color-mix(in srgb, var(--gc) 35%, var(--border)); }
-.tier-gate-lbl { font-size:9px; font-weight:700; letter-spacing:.1em; color:var(--muted); }
-.tier-gate-n { font-size:22px; font-weight:800; color:var(--gc); line-height:1; }
-.tier-nodes { display:flex; gap:9px; flex-wrap:wrap; flex:1; align-content:center; }
-.ntile { position:relative; width:120px; display:flex; flex-direction:column; align-items:center; gap:5px; background:var(--surf2); border:1px solid var(--border); border-top:3px solid var(--nc); border-radius:10px; padding:13px 8px 9px; cursor:pointer; font-family:inherit; transition:border-color .15s, transform .1s, box-shadow .15s; }
-.ntile:hover { border-color:var(--nc); transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.4); }
-.ntile-kind { position:absolute; top:5px; left:7px; font-size:8px; font-weight:800; letter-spacing:.04em; padding:1px 5px; border-radius:4px; }
+.tree { display:flex; flex-direction:column; gap:8px; max-width:1000px; }
+.tier-row { display:flex; gap:11px; align-items:stretch; background:var(--surf); border:1px solid var(--border); border-radius:10px; padding:9px; }
+.tier-gate { flex-shrink:0; width:42px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; background:color-mix(in srgb, var(--gc) 12%, var(--surf2)); border:1px solid color-mix(in srgb, var(--gc) 35%, var(--border)); }
+.tier-gate-lbl { font-size:8px; font-weight:700; letter-spacing:.1em; color:var(--muted); }
+.tier-gate-n { font-size:17px; font-weight:800; color:var(--gc); line-height:1; }
+.tier-nodes { display:flex; gap:7px; flex-wrap:wrap; flex:1; align-content:center; }
+.ntile { position:relative; width:92px; display:flex; flex-direction:column; align-items:center; gap:3px; background:var(--surf2); border:1px solid var(--border); border-top:3px solid var(--nc); border-radius:9px; padding:9px 6px 7px; cursor:pointer; font-family:inherit; transition:border-color .15s, transform .1s, box-shadow .15s; }
+.ntile:hover { border-color:var(--nc); transform:translateY(-2px); box-shadow:0 5px 14px rgba(0,0,0,.4); }
+.ntile-kind { position:absolute; top:4px; left:5px; font-size:7px; font-weight:800; letter-spacing:.03em; padding:1px 4px; border-radius:3px; }
 .ntile-kind.k-a { color:#fcd34d; background:rgba(252,211,77,.16); }
 .ntile-kind.k-p { color:#a78bfa; background:rgba(167,139,250,.16); }
-.ntile-ico { width:44px; height:44px; border-radius:9px; background:#0a101e; border:1px solid var(--border2); object-fit:contain; image-rendering:pixelated; margin-top:8px; }
-.ntile-name { font-size:11.5px; font-weight:700; color:#e2e8f0; text-align:center; line-height:1.25; }
-.ntile-max { font-size:10px; color:var(--muted); }
+.ntile-ico { width:34px; height:34px; border-radius:7px; background:#0a101e; border:1px solid var(--border2); object-fit:contain; image-rendering:pixelated; margin-top:7px; }
+.ntile-name { font-size:10.5px; font-weight:700; color:#e2e8f0; text-align:center; line-height:1.2; }
+.ntile-max { font-size:9px; color:var(--muted); }
 .tree-note { font-size:12px; color:var(--muted); margin-top:14px; max-width:1000px; line-height:1.6; }
 /* node detail modal */
 .nd-hd { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
@@ -3213,7 +3242,54 @@ function skillTrigger(n) {
   return '';
 }
 
-// ── Skills tab = ต้นไม้สกิลตามเลเวล (level-gated) ──
+// ── Skills tab = ข้อมูลตัวละคร + ต้นไม้สกิลตามเลเวล (level-gated) ──
+const HERO_STAT_META = [
+  ['MaxHp',            {e:'Max HP',t:'พลังชีวิต'},   'int'],
+  ['Armor',            {e:'Armor',t:'เกราะ'},        'int'],
+  ['AttackDamage',     {e:'Attack Damage',t:'พลังโจมตี'},'int'],
+  ['AttackSpeed',      {e:'Attack Speed',t:'ความเร็วโจมตี'},'int'],
+  ['CastSpeed',        {e:'Cast Speed',t:'ความเร็วร่าย'},'pct'],
+  ['CriticalChance',   {e:'Critical Chance',t:'โอกาสคริติคอล'},'pct10'],
+  ['CriticalDamage',   {e:'Critical Damage',t:'ดาเมจคริติคอล'},'pct10'],
+  ['CooldownReduction',{e:'Cooldown Reduction',t:'ลดคูลดาวน์'},'pct'],
+  ['MovementSpeed',    {e:'Movement Speed',t:'ความเร็วเคลื่อนที่'},'int'],
+];
+function fmtHeroStat(v, kind) {
+  if (v == null) return '—';
+  if (kind === 'pct')   return v + '%';
+  if (kind === 'pct10') return (v / 10) + '%';
+  return v.toLocaleString('en');
+}
+function weaponName(code) {
+  if (!code) return '';
+  const en = code.charAt(0) + code.slice(1).toLowerCase();
+  return jbi({e: en, t: (typeof GEARTYPE_TH !== 'undefined' && GEARTYPE_TH[code]) || en});
+}
+
+function renderHeroInfo(h) {
+  if (!h) return '';
+  const chips = [
+    h.mainW ? `<span class="hi-chip">${jbi({e:'Main',t:'มือหลัก'})}: ${weaponName(h.mainW)}</span>` : '',
+    h.subW ? `<span class="hi-chip">${jbi({e:'Off',t:'มือรอง'})}: ${weaponName(h.subW)}</span>` : '',
+    h.unlock != null ? `<span class="hi-chip">${jbi({e:'Unlock',t:'ปลดล็อก'})}: ${h.unlock.toLocaleString('en')}</span>` : '',
+  ].filter(Boolean).join('');
+  const attrs = HERO_STAT_META.map(([k, lbl, kind]) =>
+    `<div class="hi-attr"><span>${jbi(lbl)}</span><b>${fmtHeroStat(h.stats[k], kind)}</b></div>`).join('');
+  return `<div class="hero-info" style="--hc:${h.color}">
+      <div class="hi-top">
+        <img class="hi-portrait" src="${esc(h.icon)}" alt="" onerror="this.style.opacity='.2'">
+        <div class="hi-meta">
+          <div class="hi-name">${jbi(h.name_bi)}</div>
+          <div class="hi-desc">${jbi(h.desc)}</div>
+          <div class="hi-chips">${chips}</div>
+        </div>
+        <img class="hi-art" src="${esc(h.art)}" alt="" onerror="this.style.display='none'">
+      </div>
+      <div class="hi-attr-lbl">${jbi({e:'Base attributes',t:'ค่าพื้นฐาน'})} <span class="hi-attr-note">${jbi({e:'(level-1 design values — scale with level & gear)',t:'(ค่าออกแบบที่ Lv1 — ของจริงเพิ่มตามเลเวล/เกียร์)'})}</span></div>
+      <div class="hi-attrs">${attrs}</div>
+    </div>`;
+}
+
 function renderHeroSkills(key) {
   const tree = HERO_TREES.find(t => t.key === key);
   const h = HEROES_DATA.find(x => x.key === key);
@@ -3221,10 +3297,10 @@ function renderHeroSkills(key) {
   if (!tree || !el) return;
   const col = (h && h.color) || '#e8c84a';
 
-  el.innerHTML = `<div class="tree">` + tree.tree.map(tier => {
+  el.innerHTML = renderHeroInfo(h) + `<div class="tree">` + tree.tree.map(tier => {
     const tiles = tier.nodes.map(n => {
       const isA = n.kind === 'a';
-      const name = isA ? esc(n.name) : jbi({e:n.en, t:n.th});
+      const name = isA ? jbi(n.name_bi) : jbi({e:n.en, t:n.th});
       const dc = isA ? (DMG_COLORS[n.dtype] || '#94a3b8') : '#a78bfa';
       return `<button class="ntile" style="--nc:${dc}" onclick="openNode(${key},${n.key})">
           <span class="ntile-kind ${isA?'k-a':'k-p'}">${isA?jbi({e:'SKILL',t:'สกิล'}):jbi({e:'PASSIVE',t:'พาสซีฟ'})}</span>
@@ -3250,9 +3326,10 @@ function openNode(heroKey, nodeKey) {
   if (n.kind === 'a') {
     const dc = DMG_COLORS[n.dtype] || '#94a3b8';
     const rng = `<strong style="color:${dc}">${skillVal(n.vals[0], n.pct)}–${skillVal(n.vals[n.vals.length-1], n.pct)}</strong>`;
-    const desc = esc(n.descTpl || '').replace(/\{0\}/g, rng);
+    const fillDesc = txt => esc(txt || '').replace(/\{0\}/g, rng);
+    const desc = `<span class="en">${fillDesc(n.desc_bi.e)}</span><span class="th">${fillDesc(n.desc_bi.t)}</span>`;
     const tags = [
-      n.dtype ? `<span class="skill-tag" style="color:${dc};border-color:${dc}44;background:${dc}18">${esc(n.dtype)}</span>` : '',
+      n.dtype ? `<span class="skill-tag" style="color:${dc};border-color:${dc}44;background:${dc}18">${jbi({e:n.dtype, t:(ELEMENT_TH[n.dtype]||n.dtype)})}</span>` : '',
       ...n.delivery.map(d => `<span class="skill-tag" style="color:var(--muted);border-color:var(--border)">${esc(d)}</span>`),
     ].filter(Boolean).join('');
     const info = [
@@ -3264,7 +3341,7 @@ function openNode(heroKey, nodeKey) {
     const rows = n.vals.map((v,i) => `<tr><td>Lv ${i+1}</td><td class="num" style="text-align:right;color:${dc};font-weight:700">${skillVal(v,n.pct)}</td></tr>`).join('');
     html = `
       <div class="nd-hd"><img class="nd-ico" src="${esc(n.icon)}" onerror="this.style.opacity='.2'">
-        <div><div class="nd-name">${esc(n.name)}</div><div class="skill-tags">${tags}</div></div></div>
+        <div><div class="nd-name">${jbi(n.name_bi)}</div><div class="skill-tags">${tags}</div></div></div>
       ${desc ? `<p class="nd-desc">${desc}</p>` : ''}
       <div class="nd-info-grid">${info}</div>
       <div class="nd-tbl-lbl">${jbi({e:'Damage by level',t:'ดาเมจตามเลเวล'})}</div>
