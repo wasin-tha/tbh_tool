@@ -802,7 +802,9 @@ body.lang-th .lang-toggle .opt-th { color: #0a0a0a; }
   box-sizing: content-box; padding: 5px; border-radius: 8px;
   background: rgba(232,200,74,.14); border: 1px solid rgba(232,200,74,.32); color: var(--gold);
 }
-.tab-nav { display: flex; gap: 3px; flex: 1; }
+.tab-nav { display: flex; gap: 3px; flex: 1; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn { flex-shrink: 0; }
 .tab-btn {
   position: relative;
   display: flex; align-items: center; gap: 7px;
@@ -1564,13 +1566,28 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .mb-ok:hover { background: #4f46e5; }
 
 @media (max-width: 600px) {
-  .topbar { padding: 0 12px; }
+  .topbar { padding: 0 10px; gap: 6px; }
+  .topbar-logo { margin-right: 10px; }
   .topbar-logo span { display: none; }
-  .tab-btn { padding: 5px 10px; font-size: 12px; }
+  .tab-btn { padding: 6px 11px; font-size: 12px; }
   .tab-btn svg { display: none; }
-  .grid, .pet-grid { grid-template-columns: 1fr; }
+  .grid, .pet-grid, .craft-grid, .skill-grid, .passive-grid { grid-template-columns: 1fr; }
   .run-groups { grid-template-columns: 1fr 1fr !important; }
-  .mat-wrap, .calc-wrap, .pet-wrap { padding: 16px 12px 40px; }
+  /* ลด padding ขอบจอทุกแท็บ */
+  .mat-wrap, .calc-wrap, .pet-wrap, .gear-wrap, .craft-wrap, .runes-wrap, .skills-wrap, .stages-wrap { padding: 16px 12px 40px; }
+  /* Farm: ฟิลด์เต็มแถว + ตารางเลื่อนแนวนอนอยู่แล้ว */
+  .farm-modetab { font-size: 13px; padding: 11px 8px; }
+  #farm-herolv, #farm-bonus { width: 100%; }
+  .farm-field { flex: 1 1 120px; }
+  .farm-best-col { flex-basis: 100%; }
+  .farm-sample { flex-wrap: wrap; }
+  .fdd { max-width: none; }
+  .farm-time { width: 110px; }
+  /* Skills: การ์ดข้อมูล + tooltip เต็มจอ */
+  .hi-attrs { grid-template-columns: 1fr 1fr; }
+  .ntip { width: calc(100vw - 20px); }
+  /* Stages/Farm reference: detail panel เต็มแถว */
+  #stage-detail-panel { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .card, .pet-card, .tab-btn, .pill, .btn { transition: none; }
