@@ -1147,6 +1147,7 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .passive-name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
 .passive-val  { font-size: 11px; color: var(--gold); font-weight: 700; margin-top: 2px; }
 .skill-card { cursor: pointer; }
+.skill-filter { display:flex; gap:7px; flex-wrap:wrap; margin:0 0 16px; }
 /* ── hero info card ── */
 .hero-info { background:var(--surf); border:1px solid var(--border); border-radius:var(--r); padding:16px 18px; margin-bottom:16px; max-width:1000px; }
 .hi-top { display:flex; gap:14px; align-items:flex-start; }
@@ -1877,6 +1878,11 @@ TAB5 = """
   <h1 class="page-title">Skills</h1>
   <p class="page-sub"><span class="en">Skill tree by unlock level — pick a class, click a node for full scaling</span><span class="th">ต้นไม้สกิลเรียงตามเลเวลที่ปลดล็อก — เลือก class แล้วคลิก node เพื่อดูค่าทุกเลเวล</span></p>
   <div class="hero-nav" id="hero-nav"></div>
+  <div class="skill-filter">
+    <button class="pill active" data-sf="all" onclick="setSkillFilter('all',this)"><span class="en">All</span><span class="th">ทั้งหมด</span></button>
+    <button class="pill" data-sf="a" onclick="setSkillFilter('a',this)"><span class="en">Skills</span><span class="th">สกิล</span></button>
+    <button class="pill" data-sf="p" onclick="setSkillFilter('p',this)"><span class="en">Passives</span><span class="th">พาสซีฟ</span></button>
+  </div>
   <div id="skills-content"></div>
 </div></div>
 <div class="skill-detail-ov" id="skill-detail-ov" onclick="closeSkillDetail(event)">
@@ -3237,6 +3243,12 @@ function switchHero(key) {
 function fmtDmg(v) { if (!v) return '—'; const n = v / 100; return Number.isInteger(n) ? n + '%' : n.toFixed(1) + '%'; }
 
 const DMG_COLORS = { Physical:'#f87171', Fire:'#fb923c', Cold:'#67e8f9', Lightning:'#fde68a', Magic:'#c4b5fd', Heal:'#4ade80' };
+let skillFilter = 'all';   // 'all' | 'a' (active) | 'p' (passive)
+function setSkillFilter(k, btn) {
+  skillFilter = k;
+  document.querySelectorAll('.skill-filter .pill').forEach(b => b.classList.toggle('active', b === btn));
+  if (typeof activeHeroKey !== 'undefined' && activeHeroKey) renderHeroSkills(activeHeroKey);
+}
 function skillVal(v, pct) { return pct ? v + '%' : v; }
 function skillTrigger(n) {
   const a = n.act;
@@ -3302,7 +3314,9 @@ function renderHeroSkills(key) {
   const col = (h && h.color) || '#e8c84a';
 
   el.innerHTML = renderHeroInfo(h) + `<div class="tree">` + tree.tree.map(tier => {
-    const tiles = tier.nodes.map(n => {
+    const nodes = tier.nodes.filter(n => skillFilter === 'all' || n.kind === skillFilter);
+    if (!nodes.length) return '';   // ซ่อนแถวเลเวลที่ไม่มี node ตรง filter
+    const tiles = nodes.map(n => {
       const isA = n.kind === 'a';
       const name = isA ? jbi(n.name_bi) : jbi({e:n.en, t:n.th});
       const dc = isA ? (DMG_COLORS[n.dtype] || '#94a3b8') : '#a78bfa';
