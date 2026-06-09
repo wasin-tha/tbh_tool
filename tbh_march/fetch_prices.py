@@ -58,7 +58,8 @@ def load_cookies():
         return jar or None
     return {'steamLoginSecure': raw}
 
-COOKIES = load_cookies()
+# --no-cookie = ข้าม cookie (ใช้ตอนรันบนเครื่อง IP ไทย → render คืน ฿ ตาม IP เลย ไม่ต้องพึ่ง cookie)
+COOKIES = None if '--no-cookie' in sys.argv else load_cookies()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def load_json(path, default=None):
