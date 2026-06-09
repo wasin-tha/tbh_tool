@@ -2692,7 +2692,8 @@ function computeFarm() {
     return;
   }
 
-  const pool = STAGES_DATA.filter(s => s.diff === FARM_DIFF && s.type !== 'ACTBOSS' && s.hp != null && s.level <= ceilLv);
+  // จัดอันดับ "ทุกระดับ" ที่ level ≤ เพดาน (ตาม wiki — best มักเป็นด่านคนละระดับกับ ceiling)
+  const pool = STAGES_DATA.filter(s => s.type !== 'ACTBOSS' && s.hp != null && s.level <= ceilLv);
   const rows = pool.map(s => {
     const T   = fit.a * s.hp + fit.k * s.waves;
     const pen = isGold ? 1 : farmPenalty(heroLv, s.level);
@@ -2742,14 +2743,14 @@ function renderFarmResults(rows) {
   const runners = rows.slice(1, 4).map((r, i) => `
       <div class="fb-run">
         <span class="fb-run-rank">${i+2}</span>
-        <span class="fb-run-name"><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${ceilKeys.has(r.s.key)?`<span class="fb-run-tag">${jbi({e:'your max',t:'ด่านสูงสุด'})}</span>`:''}</span>
+        <span class="fb-run-name"><span class="fdd-dot" style="background:${DIFF_META[r.s.diff].color}"></span><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${ceilKeys.has(r.s.key)?`<span class="fb-run-tag">${jbi({e:'your max',t:'ด่านสูงสุด'})}</span>`:''}</span>
         <span class="fb-run-val" style="color:${accent}">${fmtNum(Math.round(r.ph))}</span>
         <span class="fb-run-pct">${Math.round(r.ph / top.ph * 100)}%</span>
       </div>`).join('');
   const best = `
     <div class="farm-best" style="border-color:${accent}55;background:${accent}10">
       <div class="farm-best-lbl">★ ${jbi({e:'Best farm', t:'ฟาร์มคุ้มสุด'})}</div>
-      <div class="farm-best-stage">${top.s.act}-${top.s.no} <span style="font-weight:500;color:var(--muted)">${jbi(top.s.name_bi || top.s.name)}</span></div>
+      <div class="farm-best-stage">${top.s.act}-${top.s.no} <span style="font-weight:500;color:var(--muted)">${jbi(top.s.name_bi || top.s.name)}</span> <span style="font-size:13px;font-weight:700;color:${DIFF_META[top.s.diff].color}">${jdiff(DIFF_META[top.s.diff].label)}</span></div>
       <div class="farm-best-val" style="color:${accent}">${fmtNum(Math.round(top.ph))} <span style="font-size:13px;color:var(--muted)">${valLbl}</span></div>
       ${chips}
       ${beatsHtml}
@@ -2763,7 +2764,7 @@ function renderFarmResults(rows) {
     <tr${i===0?` style="background:${accent}0e"`:''}>
       <td class="ft-rank">${i+1}</td>
       <td class="ft-stage"><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${badges}</td>
-      <td class="ft-diff"><span class="fdd-dot" style="background:${DIFF_META[FARM_DIFF].color}"></span>${jdiff(DIFF_META[FARM_DIFF].label)}</td>
+      <td class="ft-diff"><span class="fdd-dot" style="background:${DIFF_META[r.s.diff].color}"></span>${jdiff(DIFF_META[r.s.diff].label)}</td>
       <td class="ft-num" style="color:#cbd5e1">Lv${r.s.level}</td>
       <td class="ft-num">${Math.round(r.T)}s</td>
       ${isGold ? '' : `<td class="ft-num" style="color:${r.pen>=0.94?'#4ade80':r.pen>=0.5?'#fcd34d':'#f87171'}">${Math.round(r.pen*100)}%</td>`}
