@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: read      # ให้ gh api อ่านผล run ก่อนหน้าได้ (เช็ค fail 2 ครั้งติด)
 
 concurrency:
   group: update-prices
@@ -55,10 +56,20 @@ jobs:
             done
           fi
 
-      - name: Notify Discord on failure
+      - name: Notify Discord on 2 consecutive failures
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          MSG="⚠️ **TBH price update ล้มเหลว**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด อัปเดต Secret \`STEAM_COOKIE\` ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions\\n🍪 เอา steamLoginSecure ใหม่: เปิด steamcommunity.com (login อยู่) → F12 → Application → Cookies → steamLoginSecure"
+          # ส่ง Discord เฉพาะเมื่อ fail 2 ครั้งติด — รอบเดียวพังชั่วคราว (rate limit) ไม่ต้องเตือน
+          # current run ยังไม่ completed ตอนนี้ → run ที่ completed ล่าสุด = รอบก่อนหน้า
+          PREV=$(gh api "/repos/${{ github.repository }}/actions/workflows/update-prices.yml/runs?status=completed&per_page=1" --jq '.workflow_runs[0].conclusion' 2>/dev/null || echo "")
+          echo "previous completed run conclusion: '$PREV'"
+          if [ "$PREV" != "failure" ]; then
+            echo "รอบก่อนไม่ fail → นี่คือ fail ครั้งแรก เงียบไว้ก่อน"
+            exit 0
+          fi
+          MSG="⚠️ **TBH price update ล้มเหลว 2 ครั้งติด**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด อัปเดต Secret \`STEAM_COOKIE\` ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions\\n🍪 เอา steamLoginSecure ใหม่: เปิด steamcommunity.com (login อยู่) → F12 → Application → Cookies → steamLoginSecure"
           curl -s -H "Content-Type: application/json" \
             -d "{\"content\": \"$MSG\"}" \
             "${{ secrets.DISCORD_WEBHOOK }}"
