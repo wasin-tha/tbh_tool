@@ -56,20 +56,21 @@ jobs:
             done
           fi
 
-      - name: Notify Discord on 2 consecutive failures
+      - name: Notify Discord on 4 consecutive failures
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # ส่ง Discord เฉพาะเมื่อ fail 2 ครั้งติด — รอบเดียวพังชั่วคราว (rate limit) ไม่ต้องเตือน
-          # current run ยังไม่ completed ตอนนี้ → run ที่ completed ล่าสุด = รอบก่อนหน้า
-          PREV=$(gh api "/repos/${{ github.repository }}/actions/workflows/update-prices.yml/runs?status=completed&per_page=1" --jq '.workflow_runs[0].conclusion' 2>/dev/null || echo "")
-          echo "previous completed run conclusion: '$PREV'"
-          if [ "$PREV" != "failure" ]; then
-            echo "รอบก่อนไม่ fail → นี่คือ fail ครั้งแรก เงียบไว้ก่อน"
+          # ส่ง Discord เฉพาะเมื่อ fail 4 ครั้งติด — รอบเดียว/สองพังชั่วคราว (rate limit) ไม่ต้องเตือน
+          # current run ยังไม่ completed → 3 run ที่ completed ล่าสุด = 3 รอบก่อนหน้า
+          # ถ้า 3 รอบนั้น fail หมด + รอบนี้ fail = 4 ครั้งติด
+          FAILS=$(gh api "/repos/${{ github.repository }}/actions/workflows/update-prices.yml/runs?status=completed&per_page=3" --jq '[.workflow_runs[].conclusion] | map(select(. == "failure")) | length' 2>/dev/null || echo "0")
+          echo "previous 3 completed runs failed: $FAILS/3"
+          if [ "$FAILS" -lt 3 ]; then
+            echo "ยังไม่ครบ 4 ครั้งติด — เงียบไว้ก่อน"
             exit 0
           fi
-          MSG="⚠️ **TBH price update ล้มเหลว 2 ครั้งติด**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด อัปเดต Secret \`STEAM_COOKIE\` ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions\\n🍪 เอา steamLoginSecure ใหม่: เปิด steamcommunity.com (login อยู่) → F12 → Application → Cookies → steamLoginSecure"
+          MSG="⚠️ **TBH price update ล้มเหลว 4 ครั้งติด**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด อัปเดต Secret \`STEAM_COOKIE\` ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions\\n🍪 เอา steamLoginSecure ใหม่: เปิด steamcommunity.com (login อยู่) → F12 → Application → Cookies → steamLoginSecure"
           curl -s -H "Content-Type: application/json" \
             -d "{\"content\": \"$MSG\"}" \
             "${{ secrets.DISCORD_WEBHOOK }}"
