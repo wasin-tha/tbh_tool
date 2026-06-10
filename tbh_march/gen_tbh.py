@@ -1513,7 +1513,7 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .rune-viewport {
   width:100%; height:calc(100vh - 220px); min-height:500px; overflow:hidden; position:relative;
   background:#060d1a; border:1px solid var(--border); border-radius:var(--r);
-  cursor:grab; user-select:none;
+  cursor:grab; user-select:none; touch-action:none; overscroll-behavior:contain;
 }
 .rune-viewport.dragging { cursor:grabbing; }
 .rune-world { position:absolute; transform-origin:0 0; }
@@ -1530,7 +1530,7 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .rune-node:hover { filter:brightness(1.4); transform:translate(-18px,-18px) scale(1.25); z-index:10; }
 .rune-node.dimmed { opacity:.12; filter:grayscale(1); }
 .rune-node.hit { box-shadow:0 0 0 3px var(--gold), 0 0 14px 2px rgba(232,200,74,.6); z-index:5; }
-.rune-node img { width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+.rune-node img { width:100%; height:100%; object-fit:contain; image-rendering:pixelated; pointer-events:none; -webkit-user-drag:none; user-select:none; }
 .rune-controls {
   position:absolute; bottom:12px; right:12px; display:flex; gap:6px; z-index:20;
 }
@@ -3171,6 +3171,7 @@ function initRuneTree() {
       const img = document.createElement('img');
       img.src = n.icon;
       img.alt = n.name;
+      img.draggable = false;   // กันรูปติดเมาส์ตอนลาก (native image drag)
       div.appendChild(img);
     }
     div.addEventListener('mouseenter', ev => showRuneTT(ev, n));
@@ -3181,9 +3182,12 @@ function initRuneTree() {
 
   applyRuneTransform();
 
+  // กัน native drag-and-drop ของรูป/ลิงก์ในกล่อง (ไม่งั้นรูปรูนจะติดเมาส์ตอนลาก)
+  vp.addEventListener('dragstart', e => e.preventDefault());
+
   // Pan
   let drag = false, lx = 0, ly = 0;
-  vp.addEventListener('mousedown', e => { drag=true; lx=e.clientX; ly=e.clientY; vp.classList.add('dragging'); });
+  vp.addEventListener('mousedown', e => { e.preventDefault(); drag=true; lx=e.clientX; ly=e.clientY; vp.classList.add('dragging'); });
   window.addEventListener('mousemove', e => {
     if (!drag) return;
     ox += e.clientX - lx; oy += e.clientY - ly;
@@ -3192,16 +3196,18 @@ function initRuneTree() {
   });
   window.addEventListener('mouseup', () => { drag=false; vp.classList.remove('dragging'); });
 
-  // Touch pan
+  // Touch pan — passive:false + preventDefault กันจอเลื่อนทั้งหน้า/pull-to-refresh บนมือถือ
   let touch0 = null;
-  vp.addEventListener('touchstart', e => { if(e.touches.length===1){ touch0={x:e.touches[0].clientX,y:e.touches[0].clientY}; } }, {passive:true});
+  vp.addEventListener('touchstart', e => { if(e.touches.length===1){ touch0={x:e.touches[0].clientX,y:e.touches[0].clientY}; } }, {passive:false});
   vp.addEventListener('touchmove', e => {
     if(e.touches.length===1 && touch0){
+      e.preventDefault();
       ox+=e.touches[0].clientX-touch0.x; oy+=e.touches[0].clientY-touch0.y;
       touch0={x:e.touches[0].clientX,y:e.touches[0].clientY};
       applyRuneTransform();
     }
-  }, {passive:true});
+  }, {passive:false});
+  vp.addEventListener('touchend', () => { touch0=null; }, {passive:true});
 
   // Zoom
   vp.addEventListener('wheel', e => {
