@@ -2868,12 +2868,12 @@ function renderFarmNext(rows, ceilLv, nTimed) {
   if (!rec) { el.innerHTML = ''; return; }
   const code = `${rec.act}-${rec.no}`;
   const nb = rec.name_bi || {e:rec.name, t:rec.name};
+  const dm = DIFF_META[rec.diff];
+  const diffHtml = `<span class="fdd-dot" style="background:${dm.color}"></span><span style="color:${dm.color};font-weight:700">${jdiff(dm.label)}</span> <span style="color:var(--muted)">Lv${rec.level}</span>`;
   el.innerHTML = `
     <div class="farm-next-card">
       <span class="farm-next-lbl">${jbi({e:'Next', t:'ถัดไป'})}</span>
-      <span class="farm-next-txt">${jbi({
-        e:`Run ${code} ${nb.e} and enter its clear time to sharpen the estimate.`,
-        t:`ลองรันด่าน ${code} ${nb.t || nb.e} แล้วกรอกเวลาเคลียร์เพื่อให้ค่าประเมินแม่นขึ้น`})}</span>
+      <span class="farm-next-txt">${jbi({e:`Run ${code} ${nb.e}`, t:`ลองรันด่าน ${code} ${nb.t || nb.e}`})} ${diffHtml} ${jbi({e:'— enter its clear time to sharpen the estimate.', t:'— กรอกเวลาเคลียร์เพื่อให้ค่าประเมินแม่นขึ้น'})}</span>
       <button class="btn btn-ghost farm-next-add" onclick="addRecommended(${rec.key})">+ ${jbi({e:'Add', t:'เพิ่ม'})}</button>
     </div>`;
 }
