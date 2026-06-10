@@ -1337,6 +1337,11 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .farm-add { margin-top:2px; font-size:12px; padding:5px 12px; }
 .farm-fitnote { margin-top:12px; font-size:12px; color:var(--muted); }
 .farm-fitnote.warn { color:#fbbf24; }
+.farm-next-card { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px; padding:10px 14px; border:1px solid color-mix(in srgb, var(--gold) 40%, transparent); border-radius:var(--r); background:color-mix(in srgb, var(--gold) 8%, transparent); }
+.farm-next-lbl { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--gold); flex-shrink:0; }
+.farm-next-txt { flex:1; min-width:160px; font-size:13px; color:var(--text); }
+.farm-next-add { flex-shrink:0; font-size:12px; padding:5px 14px; }
+.farm-next-strong { margin-top:12px; font-size:12px; color:#4ade80; }
 .farm-best { border:1px solid; border-radius:var(--r); padding:18px 20px; margin-bottom:16px; }
 .farm-best-lbl { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); }
 .farm-best-stage { font-size:19px; font-weight:700; margin:4px 0 6px; }
@@ -1847,6 +1852,7 @@ TAB_FARM = """
     <div id="farm-samples"></div>
     <button class="btn btn-ghost farm-add" onclick="addFarmSample()">+ <span class="en">add stage</span><span class="th">เพิ่มด่าน</span></button>
     <div class="farm-fitnote" id="farm-fitnote"></div>
+    <div id="farm-next"></div>
   </div>
   <div class="farm-best-col" id="farm-best"></div>
   </div>
@@ -2554,7 +2560,7 @@ function initFarm() {
   window.STAGE_MAP = {};
   STAGES_DATA.forEach(s => { STAGE_MAP[s.key] = s; });
   // โหลดค่าที่บันทึกไว้ (localStorage) — ถ้าไม่มี ใช้ค่าเริ่ม (floor 1-1 + ceiling ว่าง)
-  if (!loadFarm()) farmSamples = [{act:1, no:1, t:''}, {act:null, no:null, t:''}];
+  if (!loadFarm()) farmSamples = [{act:1, no:1, t:''}, {act:null, no:null, t:'', diff:'NORMAL'}];
   applyFarmModeUI();
   renderFarmSamples();
   renderRefDiff();
@@ -2582,6 +2588,8 @@ function loadFarm() {
     if (d.bonus) farmBonus = Object.assign({exp:'0', gold:'0'}, d.bonus);
     if (typeof d.maxShow === 'number') farmMaxShow = d.maxShow;
     if (Array.isArray(d.samples) && d.samples.length >= 2) farmSamples = d.samples;
+    // migrate เก่า: sample แต่ละแถวเพิ่งมี diff เป็นของตัวเอง — ถ้ายังไม่มี ใช้ค่า global เดิม
+    farmSamples.forEach((r, i) => { if (i > 0 && !r.diff) r.diff = FARM_DIFF; });
     if (d.hero != null) document.getElementById('farm-herolv').value = d.hero;
     return Array.isArray(d.samples) && d.samples.length >= 2;
   } catch { return false; }
@@ -2653,9 +2661,10 @@ function plainName(st) {
   return st.name;
 }
 
-// เลือกระดับจากใน dropdown ด่าน — เปลี่ยน global FARM_DIFF แล้วเปิด dropdown เดิมค้างไว้ให้เลือกด่านต่อ
+// เลือกระดับจากใน dropdown ด่าน — เปลี่ยน "เฉพาะแถวนี้" (FARM_DIFF เก็บไว้เป็นค่าตั้งต้นของแถวที่เพิ่มใหม่)
 function pickDiffInline(i, d, ev) {
   if (ev) ev.stopPropagation();
+  farmSamples[i].diff = d;
   FARM_DIFF = d;
   renderFarmSamples();
   computeFarm();
@@ -2682,14 +2691,15 @@ function farmStageLabel(act, no, diff) {
 }
 function farmStageMenu(i) {
   const cur = farmSamples[i];
+  const rd = cur.diff || FARM_DIFF;   // ระดับของแถวนี้ (แยกจากแถวอื่น)
   // ── ระดับ (difficulty) เลือกได้ในนี้เลย — sticky ด้านบน ──
   let h = `<div class="fdd-difftabs">` + Object.entries(DIFF_META).map(([d, m]) =>
-    `<button type="button" class="fdd-difftab${d===FARM_DIFF?' active':''}" style="--dc:${m.color}" onclick="pickDiffInline(${i},'${d}',event)"><span class="fdd-dot" style="background:${m.color}"></span>${jdiff(m.label)}</button>`
+    `<button type="button" class="fdd-difftab${d===rd?' active':''}" style="--dc:${m.color}" onclick="pickDiffInline(${i},'${d}',event)"><span class="fdd-dot" style="background:${m.color}"></span>${jdiff(m.label)}</button>`
   ).join('') + `</div>`;
   for (let a = 1; a <= 3; a++) {
     h += `<div class="fdd-grp">Act ${a}</div>`;
     for (let n = 1; n <= 10; n++) {
-      const st = STAGE_MAP[DIFF_PREFIX[FARM_DIFF]*1000 + a*100 + n];
+      const st = STAGE_MAP[DIFF_PREFIX[rd]*1000 + a*100 + n];
       if (!st || st.hp == null || st.type === 'ACTBOSS') continue;
       const on = (a===cur.act && n===cur.no) ? ' active' : '';
       h += `<div class="fdd-opt${on}" onclick="pickFdd(${i},${a},${n})"><span class="fdd-opt-code">${a}-${n}</span><span class="fdd-opt-nm">${esc(plainName(st))}</span><span class="fdd-opt-lv">Lv${st.level}</span></div>`;
@@ -2712,10 +2722,11 @@ function renderFarmSamples() {
     }
     if (i === 1) out += `<div class="farm-row-lbl"><span class="farm-step">2</span><span><strong>${jbi({e:'Pick the hardest stage you clear 100% + time it', t:'เลือกด่านยากสุดที่คุณเคลียร์ผ่าน 100% แล้วจับเวลา'})}</strong> — ${jbi({e:'choose a difficulty & stage from the menu, then type the clear time in seconds.', t:'เลือกระดับและด่านจากเมนู แล้วใส่เวลาเคลียร์เป็นวินาที'})}</span></div>`;
     const canDel = farmSamples.length > 2;
+    const rd = row.diff || FARM_DIFF;
     out += `<div class="farm-sample">
       <div class="fdd" data-fdd="${i}">
         <button type="button" class="fdd-trigger" onclick="toggleFdd(event,${i})">
-          <span class="fdd-cur"><span class="fdd-dot" style="background:${DIFF_META[FARM_DIFF].color}"></span>${row.act == null ? `<span class="fdd-ph">${jbi({e:'Select a stage…', t:'เลือกด่าน…'})}</span>` : farmStageLabel(row.act, row.no)}</span>
+          <span class="fdd-cur"><span class="fdd-dot" style="background:${DIFF_META[rd].color}"></span>${row.act == null ? `<span class="fdd-ph">${jbi({e:'Select a stage…', t:'เลือกด่าน…'})}</span>` : farmStageLabel(row.act, row.no, rd)}</span>
           <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
         </button>
         <div class="fdd-panel">${farmStageMenu(i)}</div>
@@ -2747,7 +2758,17 @@ function farmBestPlaceholder() {
     `<div class="farm-best farm-best-empty"><div class="farm-best-lbl">★ ${jbi({e:'Best farm', t:'ฟาร์มคุ้มสุด'})}</div>` +
     `<div class="fb-empty">${jbi({e:'Enter your two clear times on the left and the best stage will show here.', t:'กรอกเวลาเคลียร์ 2 ด่านด้านซ้ายให้ครบ แล้วด่านที่คุ้มสุดจะขึ้นตรงนี้'})}</div></div>`;
 }
-function addFarmSample() { farmSamples.push({act:null, no:null, t:''}); renderFarmSamples(); computeFarm(); }
+function addFarmSample() { farmSamples.push({act:null, no:null, t:'', diff:FARM_DIFF}); renderFarmSamples(); computeFarm(); }
+// เพิ่มด่านที่ระบบแนะนำ (NEXT) — เติมแถวว่างถ้ามี ไม่งั้นเพิ่มแถวใหม่
+function addRecommended(key) {
+  const s = STAGE_MAP[key];
+  if (!s) return;
+  let row = farmSamples.find((r, i) => i > 0 && r.act == null);
+  if (row) { row.act = s.act; row.no = s.no; row.diff = s.diff; }
+  else farmSamples.push({act:s.act, no:s.no, diff:s.diff, t:''});
+  renderFarmSamples();
+  computeFarm();
+}
 function removeFarmSample(i) { farmSamples.splice(i, 1); renderFarmSamples(); computeFarm(); }
 document.addEventListener('click', e => {
   if (!e.target.closest('.fdd')) document.querySelectorAll('.fdd.open').forEach(d => d.classList.remove('open'));
@@ -2770,7 +2791,7 @@ function computeFarm() {
   farmSamples.forEach((row, i) => {
     // floor (i=0) ล็อค Normal 1-1 เสมอ — วัด overhead จากด่านที่ตีตายในนัดเดียว
     if (i !== 0 && row.act == null) return;   // ceiling ยังไม่เลือกด่าน
-    const st = i === 0 ? STAGE_MAP[1101] : STAGE_MAP[DIFF_PREFIX[FARM_DIFF]*1000 + row.act*100 + row.no];
+    const st = i === 0 ? STAGE_MAP[1101] : STAGE_MAP[DIFF_PREFIX[row.diff || FARM_DIFF]*1000 + row.act*100 + row.no];
     const T = parseTime(row.t);
     if (!st || st.hp == null || !(T > 0)) return;
     pts.push({hp: st.hp, waves: st.waves, T});
@@ -2780,6 +2801,7 @@ function computeFarm() {
   const fit = farmFit(pts);
   if (!fit) {
     document.getElementById('farm-results').innerHTML = '';
+    document.getElementById('farm-next').innerHTML = '';
     farmBestPlaceholder();
     note.className = 'farm-fitnote warn';
     note.innerHTML = jbi({e:'⚠ Enter clear times for at least 2 stages with different HP (e.g. 1-1 and a hard stage).',
@@ -2812,6 +2834,48 @@ function computeFarm() {
   });
 
   renderFarmResults(rows);
+  renderFarmNext(rows, ceilLv, pts.length);
+}
+
+// ── NEXT: แนะนำด่านถัดไปให้จับเวลาเพื่อให้ค่าประเมินแม่นขึ้น (ถอด logic จาก taskbarherowiki.com/farm) ──
+function renderFarmNext(rows, ceilLv, nTimed) {
+  const el = document.getElementById('farm-next');
+  if (!el) return;
+  // ด่านที่ใส่ไว้แล้ว (floor 1-1 + ทุกแถว ceiling ที่เลือกด่านแล้ว)
+  const added = new Set([1101]);
+  farmSamples.forEach((r, i) => { if (i > 0 && r.act != null) added.add(DIFF_PREFIX[r.diff || FARM_DIFF]*1000 + r.act*100 + r.no); });
+  // ครบ 6 ด่าน → ข้อมูลแน่นพอแล้ว ไม่ต้องแนะนำต่อ
+  if (nTimed >= 6) {
+    el.innerHTML = `<div class="farm-next-strong">✓ ${jbi({e:'Fit is strong — enough clear times for an accurate estimate.', t:'ข้อมูลแน่นพอแล้ว — เวลาเคลียร์มากพอให้ค่าประเมินแม่น'})}</div>`;
+    return;
+  }
+  // candidate = ด่านที่ฟาร์มได้ level ≤ เพดาน และยังไม่ได้ใส่
+  const pool = STAGES_DATA.filter(s => s.type !== 'ACTBOSS' && s.hp != null && s.level <= ceilLv && !added.has(s.key));
+  if (!pool.length) { el.innerHTML = ''; return; }
+  let rec = null;
+  // ≤ 2 ด่าน → แนะนำด่านคุ้มสุดที่ยังไม่ได้ใส่ (ให้ลองยืนยันผล)
+  if (nTimed <= 2) { rec = (rows.find(r => !added.has(r.s.key)) || {}).s || null; }
+  // 3-5 ด่าน → แนะนำด่านที่ HP ห่างจากที่ใส่ไว้มากสุด (ถ่างช่วงข้อมูล → fit แม่นขึ้น)
+  if (!rec) {
+    const logs = [...added].map(k => Math.log(STAGE_MAP[k].hp));
+    let best = null, bestD = -1;
+    for (const s of pool) {
+      const d = Math.min(...logs.map(L => Math.abs(Math.log(s.hp) - L)));
+      if (d > bestD) { bestD = d; best = s; }
+    }
+    rec = best;
+  }
+  if (!rec) { el.innerHTML = ''; return; }
+  const code = `${rec.act}-${rec.no}`;
+  const nb = rec.name_bi || {e:rec.name, t:rec.name};
+  el.innerHTML = `
+    <div class="farm-next-card">
+      <span class="farm-next-lbl">${jbi({e:'Next', t:'ถัดไป'})}</span>
+      <span class="farm-next-txt">${jbi({
+        e:`Run ${code} ${nb.e} and enter its clear time to sharpen the estimate.`,
+        t:`ลองรันด่าน ${code} ${nb.t || nb.e} แล้วกรอกเวลาเคลียร์เพื่อให้ค่าประเมินแม่นขึ้น`})}</span>
+      <button class="btn btn-ghost farm-next-add" onclick="addRecommended(${rec.key})">+ ${jbi({e:'Add', t:'เพิ่ม'})}</button>
+    </div>`;
 }
 
 function renderFarmResults(rows) {
@@ -2824,7 +2888,7 @@ function renderFarmResults(rows) {
   const top = rows[0];
   const shown = rows.slice(0, farmMaxShow);
   // ceiling = ด่านที่ user เลือกเป็นตัวอย่าง (ด่านที่ผ่านสูงสุด) — ติด badge ในตาราง
-  const ceilKeys = new Set(farmSamples.filter((r, i) => i > 0 && r.act != null).map(r => DIFF_PREFIX[FARM_DIFF]*1000 + r.act*100 + r.no));
+  const ceilKeys = new Set(farmSamples.filter((r, i) => i > 0 && r.act != null).map(r => DIFF_PREFIX[r.diff || FARM_DIFF]*1000 + r.act*100 + r.no));
   const ceilRows = rows.filter(r => ceilKeys.has(r.s.key));
   const ceilRow = ceilRows.length ? ceilRows.reduce((a, b) => b.s.level > a.s.level ? b : a) : null;
   const beatsPct = (ceilRow && ceilRow !== top) ? Math.round((top.ph / ceilRow.ph - 1) * 100) : 0;
