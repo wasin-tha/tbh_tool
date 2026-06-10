@@ -29,6 +29,8 @@ FILES = [
     (f'{WIKI}/data/t/gear_type_scales',     'tbh_gear_types.json',      'Gear type base stats'),
     (f'{WIKI}/data/grades.json',            'tbh_grades.json',          'Grades'),
     (f'{WIKI}/data/t/levels.json',          'tbh_levels.json',          'Levels (ExpForLevelUp ต่อเลเวล)'),
+    (f'{WIKI}/data/rune_tree.json',         'tbh_rune_tree.json',       'Rune tree (nodes/effect/levels/cost)'),
+    (f'{WIKI}/data/runes.json',             'tbh_runes.json',           'Runes (i18n names)'),
 ]
 
 def download(url, dest_path, label):

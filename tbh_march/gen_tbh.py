@@ -664,6 +664,22 @@ _redges = rune_tree_raw['edges']
 _bounds = rune_tree_raw['bounds']
 MIN_X, MIN_Y = _bounds['minX'], _bounds['minY']
 
+def _rune_scale(stat, effect_en, val):
+    """scale ค่า rune ตามกฎ stat เดียวกับ gear; ถ้า effect เป็น % แต่ stat ไม่เข้าเงื่อนไข (MoveSpeed/AttackSpeed) → div10"""
+    f = get_fmt(stat, None)
+    if f == 'flat' and '%' in (effect_en or ''):
+        f = 'div10'
+    return scale(val, f)
+
+def _rune_levels(n):
+    """value (scaled) + cost ต่อทุก level — ไม่ใช่แค่ level 1"""
+    eff = (n.get('effect') or {}).get('en-US', '')
+    return [{
+        'lv':   l.get('level'),
+        'val':  _rune_scale(l.get('stat') or n.get('stat', ''), eff, l.get('value', 0)),
+        'cost': l.get('costValue', 0),
+    } for l in n.get('levels', [])]
+
 rune_nodes_json = _json2.dumps([{
     'key':      n['key'],
     'x':        n['x'] - MIN_X,
@@ -674,9 +690,7 @@ rune_nodes_json = _json2.dumps([{
     'effect':   (n.get('effect') or {}).get('en-US', ''),
     'effect_bi': biobj(n.get('effect')),
     'maxLevel': n.get('maxLevel', 1),
-    'cost':     n['levels'][0]['costValue'] if n.get('levels') else 0,
-    'costItem': n['levels'][0]['costItem']  if n.get('levels') else 0,
-    'lv1val':   n['levels'][0]['value']     if n.get('levels') else 0,
+    'levels':   _rune_levels(n),
     'color':    _rune_color(n.get('stat', '')),
 } for n in _rnodes], ensure_ascii=False, separators=(',',':'))
 
@@ -1225,6 +1239,14 @@ input[type="number"].ctrl::-webkit-inner-spin-button { -webkit-appearance: none;
 .sd-lv.max .sd-lv-v { color:var(--gold); }
 .sd-lv.locked { opacity:.35; }
 .sd-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.rune-lv-tbl { margin-bottom:16px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.rune-lv-hd, .rune-lv-row { display:grid; grid-template-columns:64px 1fr auto; gap:10px; align-items:center; padding:7px 12px; font-size:12.5px; }
+.rune-lv-hd { background:var(--surf2); color:var(--muted); font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+.rune-lv-row { border-top:1px solid var(--border); }
+.rune-lv-row:nth-child(even) { background:rgba(255,255,255,.015); }
+.rune-lv-n { font-weight:700; color:#cbd5e1; }
+.rune-lv-e { color:#94a3b8; }
+.rune-lv-c { text-align:right; color:var(--gold); font-weight:600; font-variant-numeric:tabular-nums; }
 .sd-stat { background:var(--surf2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; }
 .sd-stat-lbl { font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
 .sd-stat-val { font-size:13px; font-weight:700; color:var(--text); margin-top:2px; }
@@ -1557,9 +1579,10 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .rune-tooltip {
   position:fixed; z-index:9999; pointer-events:none;
   background:var(--surf); border:1px solid var(--border2);
-  border-radius:8px; padding:10px 13px; max-width:240px;
+  border-radius:8px; padding:10px 13px; max-width:340px;
   box-shadow:0 8px 24px rgba(0,0,0,.6); opacity:0; transition:opacity .1s;
 }
+.rune-tooltip .rune-lv-tbl { margin-top:8px; margin-bottom:0; }
 .rune-tooltip.show { opacity:1; }
 .rtt-name { font-size:13px; font-weight:700; color:#f1f5f9; margin-bottom:4px; }
 .rtt-effect { font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:6px; }
@@ -3374,23 +3397,48 @@ function filterRunes(q) {
   if (countEl) countEl.textContent = n ? `เจอ ${n}` : 'ไม่พบ';
 }
 
+// ── rune helpers (ใช้ร่วมกันทั้ง tooltip hover + detail panel) ──
+function runeEffOf(n, v) {
+  return jbiR(n.effect_bi || n.effect, txt => esc(txt||'').replace(/\{0\}/g, `<strong style="color:${n.color}">${v}</strong>`));
+}
+function runeLvTableHtml(n) {
+  const lvs = n.levels || [];
+  if (lvs.length <= 1) return '';
+  return `<div class="rune-lv-tbl">
+    <div class="rune-lv-hd"><span>${jbi({e:'Level',t:'เลเวล'})}</span><span>${jbi({e:'Effect',t:'เอฟเฟกต์'})}</span><span style="text-align:right">${jbi({e:'Cost',t:'ราคา'})}</span></div>
+    ${lvs.map(l => `<div class="rune-lv-row"><span class="rune-lv-n">Lv ${l.lv}</span><span class="rune-lv-e">${runeEffOf(n, l.val)}</span><span class="rune-lv-c">${l.cost?(l.cost).toLocaleString('en'):'—'}</span></div>`).join('')}
+  </div>`;
+}
+
 function showRuneTT(ev, n) {
   const tt = document.getElementById('rune-tt');
-  const val = n.lv1val || '';
-  const effect = jbiR(n.effect_bi || n.effect, txt => esc((txt||'').replace(/\{0\}/g, val)));
-  const costFull = (n.cost||0).toLocaleString('en');
+  const lvs = n.levels || [];
+  const l0 = lvs[0] || {};
+  const effect = lvs.length ? runeEffOf(n, l0.val) : '';
+  const perLv = n.maxLevel > 1 ? jbi({e:' (per level)', t:' (ต่อเลเวล)'}) : '';
+  const costFull = (l0.cost||0).toLocaleString('en');
   tt.innerHTML = `<div class="rtt-name" style="color:${n.color}">${jbi(n.name_bi||n.name)}</div>
-    ${effect ? `<div class="rtt-effect">${effect}</div>` : ''}
-    ${n.cost ? `<div class="rtt-cost"><span class="en">Cost: ${costFull} coins</span><span class="th">ราคา: ${costFull} เหรียญ</span></div>` : ''}`;
-  tt.style.left = (ev.clientX + 14) + 'px';
-  tt.style.top  = (ev.clientY - 10) + 'px';
+    ${effect ? `<div class="rtt-effect">${effect}${perLv}</div>` : ''}
+    ${runeLvTableHtml(n)}
+    ${(lvs.length <= 1 && l0.cost) ? `<div class="rtt-cost"><span class="en">Cost: ${costFull} coins</span><span class="th">ราคา: ${costFull} เหรียญ</span></div>` : ''}`;
+  // วาง tooltip ข้างเคอร์เซอร์ + กันล้นขอบจอ (วัดขนาดก่อนค่อยจัดตำแหน่ง)
   tt.classList.add('show');
+  const tw = tt.offsetWidth, th = tt.offsetHeight, pad = 8;
+  let left = ev.clientX + 14, top = ev.clientY - 10;
+  if (left + tw > window.innerWidth - pad)  left = ev.clientX - tw - 14;
+  if (left < pad) left = pad;
+  if (top + th > window.innerHeight - pad)  top = window.innerHeight - th - pad;
+  if (top < pad) top = pad;
+  tt.style.left = left + 'px';
+  tt.style.top  = top + 'px';
 }
 
 function openRuneDetail(n) {
-  const val = n.lv1val || '';
-  const effect = jbiR(n.effect_bi || n.effect, txt => esc(txt||'').replace(/\{0\}/g, `<strong style="color:${n.color}">${val}</strong>`));
-  const costFull = (n.cost||0).toLocaleString('en');
+  const lvs = n.levels || [];
+  const effect = lvs.length ? runeEffOf(n, lvs[0].val) : '';
+  const perLvLbl = n.maxLevel > 1 ? jbi({e:' (per level)', t:' (ต่อเลเวล)'}) : '';
+  const lvTable = runeLvTableHtml(n);   // ตารางต่อ level — effect + ราคาแต่ละ level
+  const cost1 = (lvs[0] && lvs[0].cost || 0).toLocaleString('en');
   document.getElementById('skill-detail-box').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:12px">
@@ -3405,8 +3453,9 @@ function openRuneDetail(n) {
       <button onclick="document.getElementById('skill-detail-ov').classList.remove('show')"
         style="background:var(--surf2);border:1px solid var(--border);color:var(--muted);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
     </div>
-    ${effect ? `<div class="sd-desc">${effect}</div>` : ''}
-    ${n.cost ? `<div class="sd-stats"><div class="sd-stat"><div class="sd-stat-lbl"><span class="en">Unlock Cost</span><span class="th">ราคาปลดล็อก</span></div><div class="sd-stat-val" style="color:var(--gold)"><span class="en">${costFull} coins</span><span class="th">${costFull} เหรียญ</span></div></div><div class="sd-stat"><div class="sd-stat-lbl"><span class="en">Max Level</span><span class="th">เลเวลสูงสุด</span></div><div class="sd-stat-val">${n.maxLevel}</div></div></div>` : ''}
+    ${effect ? `<div class="sd-desc">${effect}${perLvLbl}</div>` : ''}
+    ${lvTable}
+    ${(lvs[0] && lvs[0].cost) ? `<div class="sd-stats"><div class="sd-stat"><div class="sd-stat-lbl"><span class="en">${n.maxLevel>1?'Lv1 Cost':'Unlock Cost'}</span><span class="th">${n.maxLevel>1?'ราคา Lv1':'ราคาปลดล็อก'}</span></div><div class="sd-stat-val" style="color:var(--gold)"><span class="en">${cost1} coins</span><span class="th">${cost1} เหรียญ</span></div></div><div class="sd-stat"><div class="sd-stat-lbl"><span class="en">Max Level</span><span class="th">เลเวลสูงสุด</span></div><div class="sd-stat-val">${n.maxLevel}</div></div></div>` : ''}
   `;
   document.getElementById('skill-detail-ov').classList.add('show');
 }
