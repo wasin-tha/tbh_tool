@@ -2891,6 +2891,7 @@ function renderFarmResults(rows) {
   const ceilKeys = new Set(farmSamples.filter((r, i) => i > 0 && r.act != null).map(r => DIFF_PREFIX[r.diff || FARM_DIFF]*1000 + r.act*100 + r.no));
   const ceilRows = rows.filter(r => ceilKeys.has(r.s.key));
   const ceilRow = ceilRows.length ? ceilRows.reduce((a, b) => b.s.level > a.s.level ? b : a) : null;
+  const ceilKey = ceilRow ? ceilRow.s.key : null;  // มีได้ด่านเดียว = ด่านที่ผ่านสูงสุดจริง (ที่เหลือเป็นแค่ sample)
   const beatsPct = (ceilRow && ceilRow !== top) ? Math.round((top.ph / ceilRow.ph - 1) * 100) : 0;
   const unit = isGold ? jbi({e:'gold',t:'gold'}) : jbi({e:'exp',t:'exp'});
   const chips = `<div class="fb-chips">
@@ -2902,7 +2903,7 @@ function renderFarmResults(rows) {
   const runners = rows.slice(1, 4).map((r, i) => `
       <div class="fb-run">
         <span class="fb-run-rank">${i+2}</span>
-        <span class="fb-run-name"><span class="fdd-dot" style="background:${DIFF_META[r.s.diff].color}"></span><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${ceilKeys.has(r.s.key)?`<span class="fb-run-tag">${jbi({e:'your max',t:'ด่านสูงสุด'})}</span>`:''}</span>
+        <span class="fb-run-name"><span class="fdd-dot" style="background:${DIFF_META[r.s.diff].color}"></span><strong>${r.s.act}-${r.s.no}</strong> ${jbi(r.s.name_bi || r.s.name)}${r.s.key === ceilKey?`<span class="fb-run-tag">${jbi({e:'your max',t:'ด่านสูงสุด'})}</span>`:''}</span>
         <span class="fb-run-val" style="color:${accent}">${fmtNum(Math.round(r.ph))}</span>
         <span class="fb-run-pct">${Math.round(r.ph / top.ph * 100)}%</span>
       </div>`).join('');
@@ -2918,7 +2919,7 @@ function renderFarmResults(rows) {
   const body = shown.map((r, i) => {
     const pctBest = Math.round(r.ph / top.ph * 100);
     const badges = (i === 0 ? `<span class="ft-badge ft-badge-best">${jbi({e:'BEST', t:'คุ้มสุด'})}</span>` : '')
-                 + (ceilKeys.has(r.s.key) ? `<span class="ft-badge ft-badge-ceil">${jbi({e:'MAX CLEARED', t:'ด่านที่ผ่านสูงสุด'})}</span>` : '');
+                 + (r.s.key === ceilKey ? `<span class="ft-badge ft-badge-ceil">${jbi({e:'MAX CLEARED', t:'ด่านที่ผ่านสูงสุด'})}</span>` : '');
     return `
     <tr${i===0?` style="background:${accent}0e"`:''}>
       <td class="ft-rank">${i+1}</td>
