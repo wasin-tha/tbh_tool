@@ -34,6 +34,9 @@ with open(f'{BASE}/tbh_stage_details.json', encoding='utf-8') as f:
 # totalHP ต่อด่าน (108 ด่าน farmable; ACTBOSS ไม่มี) — ใช้ใน Farm calculator
 with open(f'{BASE}/tbh_stage_hp.json', encoding='utf-8') as f:
     stage_hp_raw = json.load(f)
+# EXP ที่ต้องใช้ต่อเลเวล (ExpForLevelUp) — ใช้คำนวณ "EXP ที่เหลือถึงเลเวลถัดไป" ใน Farm
+with open(f'{BASE}/tbh_levels.json', encoding='utf-8') as f:
+    levels_raw = json.load(f)
 # (tbh_portal_map.json ไม่ได้ใช้แล้ว — เปลี่ยนเป็นตาราง stage จึงไม่ load)
 with open(f'{BASE}/tbh_pets.json', encoding='utf-8') as f:
     pets_raw = json.load(f)
@@ -535,6 +538,8 @@ for s in stages_raw:
 
 stages_json     = _json2.dumps(list(stages_by_key.values()), ensure_ascii=False, separators=(',',':'))
 print(f'Processed {len(stages_by_key)} stages')
+# {level: ExpForLevelUp} — EXP ที่ต้องใช้ทั้งหมดเพื่อจบเลเวลนั้น (เกมโชว์เป็นตัวเลขหลัง "/")
+level_exp_json  = _json2.dumps({r['Level']: r['ExpForLevelUp'] for r in levels_raw}, separators=(',',':'))
 
 # ── Build crafting data ───────────────────────────────────────────────────────
 CRAFT_TYPE_TH = {
@@ -1335,6 +1340,10 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .fdd-opt-nm { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .fdd-opt-lv { font-size:11px; color:var(--muted); flex-shrink:0; }
 .farm-add { margin-top:2px; font-size:12px; padding:5px 12px; }
+.farm-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:2px; }
+.farm-actions .farm-add { margin-top:0; }
+.farm-actions .btn { font-size:12px; padding:5px 12px; }
+.farm-actions #farm-share-btn.copied { color:#4ade80; border-color:#4ade8055; }
 .farm-fitnote { margin-top:12px; font-size:12px; color:var(--muted); }
 .farm-fitnote.warn { color:#fbbf24; }
 .farm-next-card { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px; padding:10px 14px; border:1px solid color-mix(in srgb, var(--gold) 40%, transparent); border-radius:var(--r); background:color-mix(in srgb, var(--gold) 8%, transparent); }
@@ -1351,6 +1360,9 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .fb-chip-k { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
 .fb-chip b { font-size:14px; }
 .fb-beats { font-size:12.5px; font-weight:600; margin-top:12px; }
+.fb-tonext { font-size:12.5px; font-weight:600; color:var(--text); margin-top:8px; }
+.price-toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(16px); background:var(--surf); border:1px solid #4ade8055; color:#4ade80; font-size:13px; font-weight:700; padding:9px 16px; border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:10000; }
+.price-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 .fb-runners { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
 .fb-runners-hd { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:6px; }
 .fb-run { display:flex; align-items:center; gap:9px; padding:5px 0; font-size:13px; }
@@ -1847,10 +1859,16 @@ TAB_FARM = """
         <input id="farm-herolv" class="farm-input" type="number" min="1" max="120" value="1" oninput="computeFarm()"></label>
       <label class="farm-field"><span class="farm-lbl" id="farm-bonus-lbl"><span class="en">EXP bonus %</span><span class="th">โบนัส EXP %</span></span>
         <input id="farm-bonus" class="farm-input" type="number" min="0" step="1" value="0" oninput="onFarmBonus(this.value)"></label>
+      <label class="farm-field" id="farm-expcur-field" title="EXP ปัจจุบันของเลเวลนี้ — ตัวเลขตัวหน้า / ที่เกมโชว์ (เช่น 109,064,152 / 1,346,005,129 → ใส่ 109064152). ตัวหลังระบบรู้เองจากเลเวลฮีโร่"><span class="farm-lbl"><span class="en">Current EXP</span><span class="th">EXP ปัจจุบัน</span></span>
+        <input id="farm-expcur" class="farm-input" type="text" inputmode="numeric" placeholder="—" oninput="onExpCurInput(this)"></label>
     </div>
     <div class="farm-samples-hd"><span class="en">Your clear times</span><span class="th">เวลาเคลียร์ของคุณ</span><span class="farm-hint"><span class="en"> — the calculator fits your team's damage from these (enter in seconds)</span><span class="th"> — ระบบจะคำนวณพลังตีทีมจากค่าเหล่านี้ (กรอกเป็นวินาที)</span></span></div>
     <div id="farm-samples"></div>
-    <button class="btn btn-ghost farm-add" onclick="addFarmSample()">+ <span class="en">add stage</span><span class="th">เพิ่มด่าน</span></button>
+    <div class="farm-actions">
+      <button class="btn btn-ghost farm-add" onclick="addFarmSample()">+ <span class="en">add stage</span><span class="th">เพิ่มด่าน</span></button>
+      <button class="btn btn-ghost" onclick="resetFarm()"><span class="en">Reset</span><span class="th">ล้าง</span></button>
+      <button class="btn btn-ghost" id="farm-share-btn" onclick="farmShare()"><span class="en">Share link</span><span class="th">แชร์ลิงก์</span></button>
+    </div>
     <div class="farm-fitnote" id="farm-fitnote"></div>
     <div id="farm-next"></div>
   </div>
@@ -2013,7 +2031,30 @@ function fillPrices() {
   // gear: เติมราคาในที่ผ่าน .price-row[data-pid] ด้านบนแล้ว (ไม่ต้อง re-render การ์ด 1960 ใบ)
   if (document.querySelector('#craft-grid .craft-card') && typeof renderCraft==='function') renderCraft();
 }
-(function(){ fetch('prices.json?t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(d=>{ PRICES=d||{}; PRICES_AT=d._at||''; fillPrices(); }).catch(()=>{}); })();
+// ดึง prices.json — อัปเฉพาะเมื่อ _at เปลี่ยน (ไม่งั้นไม่แตะ DOM)
+function loadPrices(announce) {
+  return fetch('prices.json?t=' + Date.now(), {cache:'no-store'}).then(r=>r.json()).then(d=>{
+    if (!d) return;
+    const at = d._at || '';
+    if (PRICES_AT && at === PRICES_AT) return;   // ราคายังเหมือนเดิม — ข้าม
+    const first = !PRICES_AT;
+    PRICES = d; PRICES_AT = at; fillPrices();
+    if (announce && !first && at) showPriceToast();
+  }).catch(()=>{});
+}
+let _priceToastT = null;
+function showPriceToast() {
+  let el = document.getElementById('price-toast');
+  if (!el) { el = document.createElement('div'); el.id = 'price-toast'; el.className = 'price-toast'; document.body.appendChild(el); }
+  el.textContent = document.body.classList.contains('lang-th') ? '✓ ราคาอัปเดตแล้ว' : '✓ Prices updated';
+  el.classList.add('show');
+  clearTimeout(_priceToastT); _priceToastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+loadPrices(false);   // โหลดครั้งแรกตอนเปิดหน้า
+// เว็บอัปราคาทุก 30 นาที (GitHub Action) แต่ user ไม่รีเฟรช → ดึงใหม่เบื้องหลังโดยไม่กวน
+setInterval(() => { if (document.visibilityState === 'visible') loadPrices(true); }, 10*60*1000);
+// กลับมาที่แท็บหลังเปิดค้างไว้นานๆ → เช็คราคาใหม่ทันที
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadPrices(true); });
 // default Thai (body starts with lang-th); switch to EN only if saved
 (function(){ try {
   if (localStorage.getItem('tbh_lang') === 'en') document.body.classList.remove('lang-th');
@@ -2247,7 +2288,7 @@ function showConfirm({title,msg,confirmLabel='ยืนยัน',danger=true},c
   document.getElementById('mi').style.background=danger?'rgba(239,68,68,.2)':'rgba(129,140,248,.2)';
   document.getElementById('mt').textContent=title;
   document.getElementById('mm').textContent=msg;
-  document.getElementById('ma').innerHTML=`<button class="mb mb-cancel" onclick="closeModal()">ยกเลิก</button><button class="mb ${danger?'mb-danger':'mb-ok'}" onclick="confirmModal()">${esc(confirmLabel)}</button>`;
+  document.getElementById('ma').innerHTML=`<button class="mb mb-cancel" onclick="closeModal()">${document.body.classList.contains('lang-th')?'ยกเลิก':'Cancel'}</button><button class="mb ${danger?'mb-danger':'mb-ok'}" onclick="confirmModal()">${esc(confirmLabel)}</button>`;
   modalCb=cb; document.getElementById('modal-ov').classList.add('show');
 }
 function showAlert({title,msg}){
@@ -2559,8 +2600,8 @@ function initFarm() {
   stagesInitDone = true;
   window.STAGE_MAP = {};
   STAGES_DATA.forEach(s => { STAGE_MAP[s.key] = s; });
-  // โหลดค่าที่บันทึกไว้ (localStorage) — ถ้าไม่มี ใช้ค่าเริ่ม (floor 1-1 + ceiling ว่าง)
-  if (!loadFarm()) farmSamples = [{act:1, no:1, t:''}, {act:null, no:null, t:'', diff:'NORMAL'}];
+  // โหลดจากลิงก์แชร์ก่อน (URL hash) → ไม่งั้นจาก localStorage → ไม่งั้นค่าเริ่ม (floor 1-1 + ceiling ว่าง)
+  if (!loadFarmFromHash() && !loadFarm()) farmSamples = [{act:1, no:1, t:''}, {act:null, no:null, t:'', diff:'NORMAL'}];
   applyFarmModeUI();
   renderFarmSamples();
   renderRefDiff();
@@ -2574,6 +2615,7 @@ function saveFarm() {
     localStorage.setItem('tbh_farm', JSON.stringify({
       mode: FARM_MODE, diff: FARM_DIFF, refDiff: REF_DIFF,
       hero: document.getElementById('farm-herolv').value,
+      expcur: document.getElementById('farm-expcur').value,
       bonus: farmBonus, samples: farmSamples, maxShow: farmMaxShow,
     }));
   } catch {}
@@ -2591,6 +2633,7 @@ function loadFarm() {
     // migrate เก่า: sample แต่ละแถวเพิ่งมี diff เป็นของตัวเอง — ถ้ายังไม่มี ใช้ค่า global เดิม
     farmSamples.forEach((r, i) => { if (i > 0 && !r.diff) r.diff = FARM_DIFF; });
     if (d.hero != null) document.getElementById('farm-herolv').value = d.hero;
+    if (d.expcur != null) { document.getElementById('farm-expcur').value = d.expcur; fmtExpCur(); }
     return Array.isArray(d.samples) && d.samples.length >= 2;
   } catch { return false; }
 }
@@ -2601,6 +2644,7 @@ function applyFarmModeUI() {
   document.getElementById('farm-bonus-lbl').innerHTML = gold ? jbi({e:'Gold bonus %', t:'โบนัส Gold %'}) : jbi({e:'EXP bonus %', t:'โบนัส EXP %'});
   document.getElementById('farm-bonus').value = farmBonus[FARM_MODE];
   document.getElementById('farm-herolv-field').style.display = gold ? 'none' : '';
+  document.getElementById('farm-expcur-field').style.display = gold ? 'none' : '';
 }
 
 // ข้อมูลจาก wiki: โทษ EXP เมื่อฮีโร่เลเวลเกินด่าน (ตารางปรับตามเลเวลฮีโร่)
@@ -2678,6 +2722,20 @@ function renderRefDiff() {
 }
 function setRefDiff(d) { REF_DIFF = d; renderRefDiff(); renderStageTable(); saveFarm(); }
 function onFarmBonus(v) { farmBonus[FARM_MODE] = v; computeFarm(); }
+// EXP ปัจจุบัน: โชว์เป็นเลขมีลูกน้ำ (เก็บ/อ่านเป็นเลขล้วน) + คง caret ให้พิมพ์ต่อได้ลื่น
+function fmtExpCur() {
+  const el = document.getElementById('farm-expcur');
+  const raw = (el.value || '').replace(/[^0-9]/g, '');
+  el.value = raw ? Number(raw).toLocaleString('en') : '';
+}
+function onExpCurInput(el) {
+  const before = el.value.slice(0, el.selectionStart).replace(/[^0-9]/g, '').length;
+  fmtExpCur();
+  let pos = 0, seen = 0;
+  while (pos < el.value.length && seen < before) { if (/[0-9]/.test(el.value[pos])) seen++; pos++; }
+  try { el.setSelectionRange(pos, pos); } catch {}
+  computeFarm();
+}
 function setFarmMode(btn) {
   FARM_MODE = btn.dataset.mode;
   applyFarmModeUI();
@@ -2721,6 +2779,7 @@ function renderFarmSamples() {
       return;
     }
     if (i === 1) out += `<div class="farm-row-lbl"><span class="farm-step">2</span><span><strong>${jbi({e:'Pick the hardest stage you clear 100% + time it', t:'เลือกด่านยากสุดที่คุณเคลียร์ผ่าน 100% แล้วจับเวลา'})}</strong> — ${jbi({e:'choose a difficulty & stage from the menu, then type the clear time in seconds.', t:'เลือกระดับและด่านจากเมนู แล้วใส่เวลาเคลียร์เป็นวินาที'})}</span></div>`;
+    if (i === 2) out += `<div class="farm-row-lbl"><span class="farm-step">3</span><span><strong>${jbi({e:'Add more stages (optional)', t:'เพิ่มด่านอื่นๆ (ไม่บังคับ)'})}</strong> — ${jbi({e:'more clear times sharpen the damage fit.', t:'ยิ่งกรอกหลายด่าน ยิ่งคำนวณพลังตีแม่นขึ้น'})}</span></div>`;
     const canDel = farmSamples.length > 2;
     const rd = row.diff || FARM_DIFF;
     out += `<div class="farm-sample">
@@ -2770,6 +2829,48 @@ function addRecommended(key) {
   computeFarm();
 }
 function removeFarmSample(i) { farmSamples.splice(i, 1); renderFarmSamples(); computeFarm(); }
+// ล้าง/เริ่มใหม่ — รีเซ็ตเวลาเคลียร์กลับเป็น 2 แถวเริ่มต้น (เก็บเลเวลฮีโร่/โบนัสไว้ ไม่ต้องกรอกซ้ำ)
+function resetFarm() {
+  const th = document.body.classList.contains('lang-th');
+  showConfirm({
+    title: th ? 'เริ่มใหม่?' : 'Start over?',
+    msg:   th ? 'ล้างเวลาเคลียร์ทั้งหมดและเริ่มใหม่?' : 'Clear all clear times and start over?',
+    confirmLabel: th ? 'ล้าง' : 'Reset',
+  }, () => {
+    farmSamples = [{act:1, no:1, t:''}, {act:null, no:null, t:'', diff:FARM_DIFF}];
+    document.getElementById('farm-expcur').value = '';
+    renderFarmSamples(); computeFarm();
+  });
+}
+// แชร์ลิงก์ — encode สถานะเครื่องคิดลง URL hash แล้ว copy ให้เลย
+function farmShare() {
+  const payload = {
+    m: FARM_MODE, h: document.getElementById('farm-herolv').value, b: farmBonus,
+    ec: document.getElementById('farm-expcur').value,
+    s: farmSamples.map(r => ({a:r.act, n:r.no, t:r.t, d:r.diff})),
+  };
+  const url = location.origin + location.pathname + '#farm=' + encodeURIComponent(JSON.stringify(payload));
+  const btn = document.getElementById('farm-share-btn');
+  const done = () => { if (!btn) return; const o = btn.innerHTML; btn.classList.add('copied');
+    btn.innerHTML = document.body.classList.contains('lang-th') ? 'คัดลอกแล้ว ✓' : 'Copied ✓';
+    setTimeout(() => { btn.innerHTML = o; btn.classList.remove('copied'); }, 1600); };
+  (navigator.clipboard ? navigator.clipboard.writeText(url).then(done, () => prompt('Copy:', url)) : Promise.resolve(prompt('Copy:', url)));
+}
+// โหลดสถานะจาก URL hash (ถ้าเปิดมาจากลิงก์แชร์) — คืน true ถ้าโหลดได้
+function loadFarmFromHash() {
+  const m = (location.hash || '').match(/farm=([^&]+)/);
+  if (!m) return false;
+  try {
+    const p = JSON.parse(decodeURIComponent(m[1]));
+    if (!Array.isArray(p.s) || p.s.length < 2) return false;
+    if (p.m) FARM_MODE = p.m;
+    if (p.b) farmBonus = Object.assign({exp:'0', gold:'0'}, p.b);
+    farmSamples = p.s.map(r => ({act:r.a, no:r.n, t:r.t || '', diff:r.d}));
+    if (p.h != null) document.getElementById('farm-herolv').value = p.h;
+    const ec = document.getElementById('farm-expcur'); if (ec && p.ec != null) { ec.value = p.ec; fmtExpCur(); }
+    return true;
+  } catch { return false; }
+}
 document.addEventListener('click', e => {
   if (!e.target.closest('.fdd')) document.querySelectorAll('.fdd.open').forEach(d => d.classList.remove('open'));
 });
@@ -2900,6 +3001,21 @@ function renderFarmResults(rows) {
       ${!isGold ? `<span class="fb-chip"><span class="fb-chip-k">${jbi({e:'EXP kept',t:'ได้ EXP'})}</span><b style="color:${top.pen>=0.94?'#4ade80':top.pen>=0.5?'#fcd34d':'#f87171'}">${Math.round(top.pen*100)}%</b></span>` : ''}
     </div>`;
   const beatsHtml = (beatsPct > 0) ? `<div class="fb-beats" style="color:${accent}">▲ ${jbi({e:`${beatsPct}% more than your max stage (${ceilRow.s.act}-${ceilRow.s.no})`, t:`ได้มากกว่าด่านที่ผ่านสูงสุด (${ceilRow.s.act}-${ceilRow.s.no}) ${beatsPct}%`})}</div>` : '';
+  // เวลาถึงเลเวลถัดไป — ใช้ "EXP ถึงเลเวลถัดไป" ที่ผู้เล่นกรอก (เกมไม่มีตาราง exp curve) หารด้วยผลของด่านคุ้มสุด
+  // EXP ที่ยังขาด = เต็มเลเวล(จาก LEVEL_EXP ตามเลเวลฮีโร่) − ปัจจุบัน(ที่ผู้เล่นกรอก)
+  const heroLvNow = Math.max(1, +document.getElementById('farm-herolv').value || 1);
+  const expCur = +(document.getElementById('farm-expcur').value || '').replace(/[^0-9]/g, '') || 0;
+  const expMax = LEVEL_EXP[heroLvNow] || 0;
+  const expNeed = isGold ? 0 : Math.max(0, expMax - expCur);
+  let toNextHtml = '';
+  if (expNeed > 0 && top.eff > 0) {
+    const runs = Math.ceil(expNeed / top.eff);
+    const hrs  = expNeed / top.ph;
+    const hTxt = hrs >= 10 ? fmtNum(Math.round(hrs)) : hrs.toFixed(1);   // เลขเยอะใช้ K/M
+    const eT = hrs >= 1 ? `${hTxt}h`        : `${Math.round(hrs*60)}m`;       // หน่วยเวลา EN
+    const tT = hrs >= 1 ? `${hTxt} ชม.`     : `${Math.round(hrs*60)} นาที`;    // หน่วยเวลา TH
+    toNextHtml = `<div class="fb-tonext">⏱ ${jbi({e:`≈ ${fmtNum(runs)} runs · ${eT} to next level`, t:`≈ ${fmtNum(runs)} รัน · ${tT} ถึงเลเวลถัดไป`})}</div>`;
+  }
   const runners = rows.slice(1, 4).map((r, i) => `
       <div class="fb-run">
         <span class="fb-run-rank">${i+2}</span>
@@ -2914,6 +3030,7 @@ function renderFarmResults(rows) {
       <div class="farm-best-val" style="color:${accent}">${fmtNum(Math.round(top.ph))} <span style="font-size:13px;color:var(--muted)">${valLbl}</span></div>
       ${chips}
       ${beatsHtml}
+      ${toNextHtml}
       ${runners ? `<div class="fb-runners"><div class="fb-runners-hd">${jbi({e:'Runner-ups',t:'รองลงมา'})} <span class="fb-runners-sub">${jbi({e:'· EXP/hr · % of best',t:'· EXP/ชม · % เทียบ'})}</span></div>${runners}</div>` : ''}
     </div>`;
   const body = shown.map((r, i) => {
@@ -3615,7 +3732,7 @@ JS_WITH_GEAR = JS.replace(
     f'const RUNE_NODES={rune_nodes_json};\nconst RUNE_EDGES={rune_edges_json};\n// ── Rune data ──'
 ).replace(
     '// ── Stages data ──',
-    f'const STAGES_DATA={stages_json};\n// ── Stages data ──'
+    f'const STAGES_DATA={stages_json};\nconst LEVEL_EXP={level_exp_json};\n// ── Stages data ──'
 ).replace(
     '// ── Crafting data ──',
     f'const CRAFT_DATA={craft_json};\n// ── Crafting data ──'
