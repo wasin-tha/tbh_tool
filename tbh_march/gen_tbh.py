@@ -491,8 +491,7 @@ for x in monsters_raw:
 # ── Build stages data ─────────────────────────────────────────────────────────
 stages_by_key = {}
 for s in stages_raw:
-    base_key = 1000 + s['act']*100 + s['no']  # Normal key for monster lookup
-    detail = stage_details_raw.get(str(base_key), {})
+    detail = stage_details_raw.get(str(s['key']), {})  # drop/มอนสเตอร์ตามระดับจริง (ไม่ใช่ Normal)
     monsters = [{
         'name': biobj(m['name']),
         'portrait': m['portrait'],
@@ -1417,6 +1416,28 @@ input.farm-input[type=number]::-webkit-inner-spin-button { -webkit-appearance:no
 .ft-badge { display:inline-block; font-size:9px; font-weight:800; letter-spacing:.05em; padding:2px 6px; border-radius:4px; margin-left:7px; vertical-align:middle; }
 .ft-badge-best { color:#0a0a0a; background:#4ade80; }
 .ft-badge-ceil { color:#93c5fd; background:rgba(147,197,253,.18); border:1px solid rgba(147,197,253,.5); }
+/* Cube level guide */
+.cube-body .farm-table tbody tr { transition:background .12s; }
+.cube-body .farm-table tbody tr:nth-child(even) { background:rgba(255,255,255,.018); }
+.cube-body .farm-table tbody tr:hover { background:rgba(232,200,74,.06); }
+.cube-body .farm-table td { padding:11px 14px; vertical-align:middle; }
+.cube-num { text-align:center; color:var(--muted); font-weight:700; font-size:12px; }
+.cube-lv { font-weight:800; color:var(--gold); white-space:nowrap; font-size:14px; }
+.cube-cell { display:inline-flex; align-items:center; }
+.cube-rng { display:inline-flex; align-items:center; min-width:250px; }
+.cube-stg { display:inline-flex; align-items:center; justify-content:center; min-width:78px; padding:2px 9px; border-radius:6px; font-size:12px; font-weight:700; white-space:nowrap; color:var(--c); background:color-mix(in srgb, var(--c) 14%, transparent); border:1px solid color-mix(in srgb, var(--c) 38%, transparent); }
+.cube-arrow { display:inline-block; width:30px; text-align:center; color:var(--muted); font-weight:700; }
+.cube-boxname { font-weight:700; color:var(--text); white-space:nowrap; }
+.cube-boxname img.cube-boxicon { width:22px; height:22px; vertical-align:middle; margin-right:8px; border-radius:4px; }
+.cube-note { margin-top:14px; padding:13px 16px; background:var(--surf2); border:1px solid var(--border); border-left:3px solid var(--gold); border-radius:var(--r); font-size:12.5px; color:var(--muted); line-height:1.8; }
+.cube-note b { color:var(--gold); display:inline-block; margin-bottom:4px; }
+.cube-details { margin-top:34px; }
+.cube-summary { margin-top:0 !important; cursor:pointer; list-style:none; user-select:none; }
+.cube-summary::-webkit-details-marker { display:none; }
+.cube-chevron { display:inline-block; margin-right:8px; color:var(--muted); transition:transform .15s ease; }
+.cube-details[open] .cube-chevron { transform:rotate(90deg); }
+.cube-summary:hover .cube-chevron { color:var(--text); }
+.cube-body { margin-top:14px; }
 /* stage reference table (own difficulty selector) */
 .ref-diff { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:14px; }
 .ref-diff-btn { display:flex; align-items:center; background:transparent; border:1px solid var(--border); color:var(--muted); font-size:12px; font-weight:700; padding:5px 13px; border-radius:7px; cursor:pointer; font-family:inherit; }
@@ -1859,6 +1880,82 @@ TAB_CRAFT = """
   <div class="craft-grid" id="craft-grid"></div>
 </div></div>"""
 
+# ── Chest drop guide (★คำนวณจากข้อมูลกล่องจริงใน tbh_stage_details.json) ──────────
+# กล่องมอนสเตอร์มีหลาย tier — แต่ละ tier ดรอป item ช่วงเลเวลหนึ่ง จากด่านช่วงหนึ่ง
+# ใช้ฟาร์ม item ไปสังเวยอัป "คิวบ์" ตามช่วงเลเวล — ข้อมูลทั้งหมดมาจาก wiki ไม่ใช่ภาพ
+_CUBE_DIFF_TH = {'Normal': 'ปกติ', 'Nightmare': 'ฝันร้าย', 'Hell': 'นรก', 'Torment': 'ทรมาน'}
+_CUBE_DIFF_EN = {'NORMAL': 'Normal', 'NIGHTMARE': 'Nightmare', 'HELL': 'Hell', 'TORMENT': 'Torment'}
+# สีระดับ ตรงกับ DIFF_META ใน JS
+_CUBE_DIFF_C = {'Normal': '#93c5fd', 'Nightmare': '#c4b5fd', 'Hell': '#fdba74', 'Torment': '#fda4af'}
+
+def _cube_pill(st):
+    """stage dict → pill สีตามระดับ 'ปกติ 1-1' (EN/TH)"""
+    diff = _CUBE_DIFF_EN[st['difficulty']]
+    code = f"{st['act']}-{st['no']}"
+    return ('<span class="cube-stg" style="--c:' + _CUBE_DIFF_C[diff] + '">'
+            + gb(diff + ' ' + code, _CUBE_DIFF_TH[diff] + ' ' + code) + '</span>')
+
+def _cube_tiers():
+    """รวบ monsterBox แต่ละ tier จากข้อมูลจริง → ช่วง item Lv + ด่านแรก/สุดท้ายที่ดรอป"""
+    tiers = []  # เรียงตามลำดับด่าน (key)
+    idx = {}
+    for s in sorted(stages_raw, key=lambda x: x['key']):
+        mb = (stage_details_raw.get(str(s['key'])) or {}).get('monsterBox')
+        if not mb:
+            continue
+        bn = mb.get('box_name') or {}
+        nm = bn.get('en-US') or bn.get('en') or ''
+        if nm not in idx:
+            idx[nm] = {'name_bi': biobj(bn), 'icon': mb.get('icon', ''),
+                       'lv_min': s['level'], 'lv_max': s['level'], 'first': s, 'last': s}
+            tiers.append(idx[nm])
+        t = idx[nm]
+        t['lv_min'] = min(t['lv_min'], s['level']); t['lv_max'] = max(t['lv_max'], s['level'])
+        t['last'] = s
+    return tiers
+
+def _cube_guide_html():
+    rows = ''
+    for i, t in enumerate(_cube_tiers(), 1):
+        icon = ('<img class="cube-boxicon" src="' + t['icon'] + '" alt="" loading="lazy">') if t['icon'] else ''
+        lv = ('Lv ' + str(t['lv_min']) + '–' + str(t['lv_max'])) if t['lv_min'] != t['lv_max'] else ('Lv ' + str(t['lv_min']))
+        rng = (_cube_pill(t['first']) + '<span class="cube-arrow">→</span>' + _cube_pill(t['last'])) \
+            if t['first']['key'] != t['last']['key'] else _cube_pill(t['first'])
+        rows += (
+            '<tr>'
+            '<td class="cube-num">' + str(i) + '</td>'
+            '<td class="cube-boxname">' + icon + '<span>' + bi(t['name_bi']) + '</span></td>'
+            '<td class="cube-lv">' + lv + '</td>'
+            '<td class="cube-from"><span class="cube-cell"><span class="cube-rng">' + rng + '</span></span></td>'
+            '</tr>'
+        )
+    return ('''
+  <details class="cube-details" open>
+  <summary class="farm-ref-hd cube-summary"><span class="cube-chevron">▸</span>''' + gb('Chest drop guide', 'คู่มือกล่อง (ฟาร์มอัปคิวบ์)') + '''<span class="farm-hint">''' + gb(' — which stages drop each chest tier (for cube sacrifice items)', ' — กล่องแต่ละระดับดรอปจากด่านไหน (item ไว้สังเวยอัปคิวบ์)') + '''</span></summary>
+  <div class="cube-body">
+  <div class="farm-table-wrap">
+    <table class="farm-table">
+      <thead><tr>
+        <th style="width:36px">#</th>
+        <th style="text-align:left">''' + gb('Chest', 'กล่อง') + '''</th>
+        <th style="text-align:left">''' + gb('Item level', 'ระดับไอเทม') + '''</th>
+        <th style="text-align:left">''' + gb('Drops from stages', 'ดรอปจากด่าน') + '''</th>
+      </tr></thead>
+      <tbody>''' + rows + '''</tbody>
+    </table>
+  </div>
+  <div class="cube-note">
+    <b>''' + gb('How it works', 'หลักการ') + '''</b><br>
+    ''' + gb('• Each chest tier drops gear within an item-level range — use that gear as sacrifice to level your cube.',
+             '• กล่องแต่ละระดับดรอปอุปกรณ์ในช่วงเลเวลหนึ่ง — เอาอุปกรณ์นั้นไปสังเวยเพื่ออัปเลเวลคิวบ์') + '''<br>
+    ''' + gb('• Farm the highest stage that drops the tier you need — same chest, fastest clears.',
+             '• ฟาร์มด่านสูงสุดที่ยังดรอปกล่องระดับที่ต้องการ — กล่องเดียวกันแต่เคลียร์ไวสุด') + '''
+  </div>
+  </div>
+  </details>''')
+
+CUBE_GUIDE_HTML = _cube_guide_html()
+
 TAB_FARM = """
 <div id="tab-farm" class="tab-pane">
 <div class="stages-wrap">
@@ -1902,7 +1999,9 @@ TAB_FARM = """
 
   <div id="farm-penalty"></div>
 
-  <div class="farm-ref-hd"><span class="en">All stage data</span><span class="th">ข้อมูลด่านทั้งหมด</span><span class="farm-hint"><span class="en"> — click a row for monsters &amp; drops</span><span class="th"> — คลิกแถวดูมอนสเตอร์และดรอป</span></span></div>
+  <details class="cube-details">
+  <summary class="farm-ref-hd cube-summary"><span class="cube-chevron">▸</span><span class="en">All stage data</span><span class="th">ข้อมูลด่านทั้งหมด</span><span class="farm-hint"><span class="en"> — click a row for monsters &amp; drops</span><span class="th"> — คลิกแถวดูมอนสเตอร์และดรอป</span></span></summary>
+  <div class="cube-body">
   <div class="ref-diff" id="ref-diff"></div>
   <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
     <div style="flex:1;min-width:340px">
@@ -1912,7 +2011,12 @@ TAB_FARM = """
       <div id="stage-detail-panel"></div>
     </div>
   </div>
+  </div>
+  </details>
+<!--CUBE_GUIDE-->
 </div></div>"""
+
+TAB_FARM = TAB_FARM.replace('<!--CUBE_GUIDE-->', CUBE_GUIDE_HTML)
 
 TAB6_RUNES = f"""
 <div id="tab-runes" class="tab-pane">
