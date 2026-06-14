@@ -31,7 +31,20 @@ FILES = [
     (f'{WIKI}/data/t/levels.json',          'tbh_levels.json',          'Levels (ExpForLevelUp ต่อเลเวล)'),
     (f'{WIKI}/data/rune_tree.json',         'tbh_rune_tree.json',       'Rune tree (nodes/effect/levels/cost)'),
     (f'{WIKI}/data/runes.json',             'tbh_runes.json',           'Runes (i18n names)'),
+    (f'{WIKI}/data/heroes.json',            'tbh_heroes.json',          'Heroes (6 class, weapon, stats, i18n)'),
+    (f'{WIKI}/data/skills.json',            'tbh_skills.json',          'Active skills'),
+    (f'{WIKI}/data/passive_skills.json',    'tbh_passive_skills.json',  'Passive skills (มี th-TH)'),
+    (f'{WIKI}/data/stages.json',            'tbh_stages.json',          'Stages (120 ด่าน)'),
+    (f'{WIKI}/data/monsters.json',          'tbh_monsters.json',        'Monsters (i18n names)'),
+    (f'{WIKI}/data/t/pets.json',            'tbh_pets.json',            'Pets (i18n names)'),
+    (f'{WIKI}/data/recipes.json',           'tbh_recipes.json',         'Crafting recipes (56 สูตร)'),
 ]
+# หมายเหตุ: ไฟล์ที่ต้องดึงพิเศษ (ไม่อยู่ในนี้) — รันแยกเมื่อจำเป็น:
+#   fetch_stage_details.py            → tbh_stage_details.json (ยิงทีละด่าน 120 ครั้ง)
+#   wiki /heroes,/skills SSR (manual) → tbh_hero_trees / tbh_skill_th / tbh_skill_maxlevel
+#   taskbarherowiki.com/farm (manual) → tbh_stage_hp.json
+#   Steam listing scrape (manual)     → tbh_unique_mods_desc.json
+#   fetch_prices.py                   → data/tbh_prices.json (ราคา Steam)
 
 def download(url, dest_path, label):
     try:
@@ -82,7 +95,7 @@ def main():
     print('Rebuild index.html...')
     result = subprocess.run(
         [sys.executable, os.path.join(BASE, 'gen_tbh.py')],
-        capture_output=True, text=True
+        capture_output=True, text=True, encoding='utf-8', errors='replace'
     )
     if result.returncode == 0:
         print(result.stdout.strip())
