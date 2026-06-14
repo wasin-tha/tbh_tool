@@ -52,10 +52,10 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 - **Secrets ที่ต้องตั้งในหน้า GitHub** (ผมตั้งให้ไม่ได้): `STEAM_COOKIE` (steamLoginSecure), `DISCORD_WEBHOOK`
 - ถ้า fail → **ยิง Discord เฉพาะเมื่อ fail 4 ครั้งติด** (เช็ค 3 run ก่อนหน้าผ่าน `gh api`, ต้องมี `permissions: actions:read`) — รอบเดียว/สองพังชั่วคราว (rate limit) ไม่เตือน
 - Public repo = Actions ฟรีไม่จำกัด
-- มี `update_prices.bat` (local, double-click) ทำงานเดียวกันบนเครื่อง — ใช้ **full path python** (เลี่ยง Store stub) + ต้องเป็น **CRLF**
+- มี `update_prices.bat` (local, double-click, **untracked** — path เฉพาะเครื่อง) = ตัวสำรองของ Action: fetch_prices → gen → `git add index.html prices.json` → `git pull --rebase` → push (mirror Action เป๊ะ) — ใช้ **full path python** (เลี่ยง Store stub) + ต้องเป็น **CRLF**
 
 ## Data sources (taskbarhero.wiki)
-WebFetch โดน 403 — ใช้ `curl -A "Mozilla/5.0"` หรือ `update_data.py`:
+ไฟล์ JSON ทั้งหมดเก็บใน `data/`. WebFetch โดน 403 — ใช้ `curl -A "Mozilla/5.0"` หรือ `update_data.py` (ดึง 18 ไฟล์ที่ endpoint คืน JSON ตรงๆ; ที่เหลือดึงพิเศษ — ดู "วิธีอัปเดต"):
 ```
 /data/items.json            → tbh_items.json (ชื่อ i18n/icon/grade/type/gear/level/marketable)
 /data/items_detail.json     → tbh_items_detail.json (base/inherent stats, uniqueMod key)
@@ -191,8 +191,13 @@ from playwright.sync_api import sync_playwright
 ```
 
 ## วิธีอัปเดตเมื่อเกม patch ใหม่
-1. `python update_data.py` (ดึง wiki data + rebuild) — ถ้ามี skill/rune/stage/recipe ใหม่ อาจต้องดึง maxLevel/stage_details/recipes เพิ่มเอง
-2. ราคา item: ปล่อย GitHub Action รันเอง (ทุก ชม.) หรือ `python fetch_prices.py` เอง
+1. `python update_data.py` (ดึง 18 ไฟล์ wiki + rebuild) — ครอบคลุม items/items_detail/materials/stat_mod_groups/stat_mods/stat_strings/gear_types/grades/levels/rune_tree/runes + heroes/skills/passive_skills/stages/monsters/pets/recipes แล้ว
+1b. ไฟล์ที่ update_data **ไม่ครอบคลุม** ต้องดึงแยกเอง (มี comment บอกใน FILES ของ update_data.py):
+   - `python fetch_stage_details.py` → `tbh_stage_details.json` (ยิงทีละด่าน 120 ครั้ง)
+   - wiki `/heroes`,`/skills` SSR (manual parse) → `tbh_hero_trees.json` / `tbh_skill_th.json` / `tbh_skill_maxlevel.json`
+   - `taskbarherowiki.com/farm` (manual) → `tbh_stage_hp.json` (ดูข้อ 3b)
+   - Steam listing scrape (manual) → `tbh_unique_mods_desc.json` (ดูข้อ 3)
+2. ราคา item: ปล่อย GitHub Action รันเอง (ทุก 30 นาที) หรือ `python fetch_prices.py` เอง
 3. ถ้ามี unique mod ใหม่ → re-scrape `tbh_unique_mods_desc.json`
 3b. ถ้า stage/HP เปลี่ยน → ดึง `tbh_stage_hp.json` ใหม่จาก `taskbarherowiki.com/farm` (parse `__next_f` `stages[]` → key→totalHP) เพราะ stages.json ไม่มี HP
 4. ขอ confirm แล้ว commit (อย่าลืม `git pull` ก่อน — Action push ราคาเรื่อยๆ)
