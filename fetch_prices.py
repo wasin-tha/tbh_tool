@@ -61,6 +61,19 @@ def load_cookies():
 # --no-cookie = ข้าม cookie (ใช้ตอนรันบนเครื่อง IP ไทย → render คืน ฿ ตาม IP เลย ไม่ต้องพึ่ง cookie)
 COOKIES = None if '--no-cookie' in sys.argv else load_cookies()
 
+def try_relogin():
+    """cookie หมดอายุ + มี STEAM_USER/STEAM_PASS → ล็อกอินใหม่ คืน cookie jar สด | None"""
+    if not (os.environ.get('STEAM_USER') and os.environ.get('STEAM_PASS')):
+        return None
+    try:
+        import steam_login
+        steam_login.refresh()        # login + เขียน steam_cookie.txt
+        print('  🔄 cookie หมด → ล็อกอิน Steam ใหม่ + เขียน cookie สดแล้ว', flush=True)
+        return load_cookies()
+    except Exception as e:
+        print(f'  ⚠ auto re-login ล้มเหลว: {e}', flush=True)
+        return None
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def load_json(path, default=None):
     if os.path.exists(path):
@@ -137,19 +150,30 @@ def main():
     # ── ยืนยันสกุลเงิน ฿ ก่อนเริ่ม — currency จาก runner (IP US) แกว่ง: บางครั้งคืน $ ทั้งที่ cookie valid
     #    ลองหน้าแรก 5 รอบ (ห่าง 2 วิ) ถ้าไม่ได้ ฿ → error ไปเลย (ไม่เริ่มดึง)
     CUR_RETRIES = 5
-    for attempt in range(CUR_RETRIES):
-        res = fetch_page(0)
-        if res in ('RATELIMIT', None):
-            time.sleep(2); continue
-        r0, total_count = res
-        if r0 and THB in r0[0].get('sell_price_text', ''):
-            break   # ได้ ฿ — เริ่มดึงจริง
-        ex = (r0[0].get('sell_price_text', '') if r0 else '?')
-        print(f'  สกุลเงินยังไม่ใช่ ฿ ("{ex}") — retry {attempt+1}/{CUR_RETRIES}', flush=True)
-        time.sleep(2)
-    else:
+    relogged = False
+    while True:
+        ok = False
+        for attempt in range(CUR_RETRIES):
+            res = fetch_page(0)
+            if res in ('RATELIMIT', None):
+                time.sleep(2); continue
+            r0, total_count = res
+            if r0 and THB in r0[0].get('sell_price_text', ''):
+                ok = True; break   # ได้ ฿ — เริ่มดึงจริง
+            ex = (r0[0].get('sell_price_text', '') if r0 else '?')
+            print(f'  สกุลเงินยังไม่ใช่ ฿ ("{ex}") — retry {attempt+1}/{CUR_RETRIES}', flush=True)
+            time.sleep(2)
+        if ok:
+            break
+        # ไม่ได้ ฿ → ลองล็อกอินใหม่อัตโนมัติครั้งเดียว แล้วยืนยันสกุลเงินซ้ำ
+        if not relogged:
+            newjar = try_relogin()
+            if newjar is not None:
+                globals()['COOKIES'] = newjar
+                relogged = True
+                continue
         print('❌ ลอง 5 รอบแล้วยังไม่ได้ ฿ — cookie หมดอายุ/ไม่ valid')
-        print(f'   อัปเดต Secret STEAM_COOKIE (หรือไฟล์ {COOKIE_FILE}) แล้วรันใหม่')
+        print(f'   ตั้ง STEAM_USER+STEAM_PASS (auto re-login) หรืออัปเดต STEAM_COOKIE/{COOKIE_FILE} เอง')
         sys.exit(2)  # exit 2 = cookie/สกุลเงินผิด
 
     try:

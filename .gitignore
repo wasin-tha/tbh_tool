@@ -1,6 +1,9 @@
 # Steam login token — ห้าม commit เด็ดขาด (ใช้กับ fetch_prices.py)
 steam_cookie.txt
 
+# local launcher — มี STEAM_USER/STEAM_PASS plaintext ห้าม commit
+update_prices.bat
+
 # raw price data (source) — prices.json (served) ยัง track ไว้ (Pages ใช้ + Action เป็นเจ้าของ)
 data/tbh_prices.json
 

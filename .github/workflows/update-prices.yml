@@ -24,12 +24,28 @@ jobs:
           python-version: '3.11'
 
       - name: Install deps
-        run: pip install requests
+        run: pip install requests steam
 
       - name: Fetch Steam Market prices
         env:
-          STEAM_COOKIE: ${{ secrets.STEAM_COOKIE }}
+          STEAM_COOKIE: ${{ secrets.STEAM_COOKIE }}   # ทางเลือก: ถ้าหมด/ไม่มี → auto re-login ด้วย user/pass
+          STEAM_USER:   ${{ secrets.STEAM_USER }}
+          STEAM_PASS:   ${{ secrets.STEAM_PASS }}
         run: python fetch_prices.py
+
+      # ถ้ารอบนี้ relogin (steam_login เขียน steam_cookie.txt) → เก็บ cookie สดกลับ Secret
+      # รอบถัดๆ ไปจะ reuse cookie นี้จนหมดอายุ (~login วันละครั้ง แทนทุกรัน)
+      - name: Save refreshed cookie back to secret
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}     # PAT สิทธิ์ Secrets:write (GITHUB_TOKEN เขียน secret ไม่ได้)
+        run: |
+          if [ -n "$GH_TOKEN" ] && [ -s steam_cookie.txt ]; then
+            gh secret set STEAM_COOKIE < steam_cookie.txt
+            echo "✅ cookie สดเขียนกลับ Secret STEAM_COOKIE แล้ว"
+          else
+            echo "ไม่มี cookie ใหม่/ไม่มี GH_PAT — ข้าม (รอบหน้าจะ login ใหม่)"
+          fi
 
       - name: Rebuild index.html + prices.json
         run: python gen_tbh.py
@@ -64,7 +80,7 @@ jobs:
             echo "ยังไม่ครบ 4 ครั้งติด — เงียบไว้ก่อน"
             exit 0
           fi
-          MSG="⚠️ **TBH price update ล้มเหลว 4 ครั้งติด**\\nอาจเพราะ cookie หมดอายุ / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 ถ้า cookie หมด อัปเดต Secret \`STEAM_COOKIE\` ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions\\n🍪 เอา steamLoginSecure ใหม่: เปิด steamcommunity.com (login อยู่) → F12 → Application → Cookies → steamLoginSecure"
+          MSG="⚠️ **TBH price update ล้มเหลว 4 ครั้งติด**\\nมี auto re-login แล้ว → ถ้ายังพังมักเป็น: รหัส STEAM_USER/STEAM_PASS ผิด / บัญชีติด Steam Guard (mobile+email ต้องปิดหมด) / บัญชีโดนล็อก / Steam rate limit / build error\\n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\\n👉 เช็ค/แก้ Secrets ที่นี่:\\n${{ github.server_url }}/${{ github.repository }}/settings/secrets/actions"
           curl -s -H "Content-Type: application/json" \
             -d "{\"content\": \"$MSG\"}" \
             "${{ secrets.DISCORD_WEBHOOK }}"
