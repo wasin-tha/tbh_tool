@@ -35,7 +35,7 @@ RENDER_URL  = ('https://steamcommunity.com/market/search/render/'
 HEADERS     = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
 THB         = '฿'  # ฿
 
-PRICES_FILE = os.path.join(BASE, 'tbh_prices.json')
+PRICES_FILE = os.path.join(BASE, 'data', 'tbh_prices.json')
 COOKIE_FILE = os.path.join(BASE, 'steam_cookie.txt')  # วาง steamLoginSecure ที่นี่ (ห้าม commit!)
 LEG_PLUS    = {'LEGENDARY','IMMORTAL','ARCANA','BEYOND','CELESTIAL','DIVINE','COSMIC'}
 
@@ -75,7 +75,7 @@ def save_json(path, data):
 # ── Build  market_hash_name → item_id  index ───────────────────────────────────
 def build_index(mode='all'):
     """{market_hash_name: [item_id, ...]} — gear หลาย level ใช้ hash เดียวกัน จึง map เป็น list"""
-    items_list = load_json(os.path.join(BASE, 'tbh_items.json'), [])
+    items_list = load_json(os.path.join(BASE, 'data', 'tbh_items.json'), [])
     idx = {}
     for item in items_list:
         if not item.get('marketable', False):

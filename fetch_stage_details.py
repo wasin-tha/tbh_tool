@@ -52,7 +52,7 @@ def fetch(key):
 
 
 def main():
-    stages = json.load(open(BASE / 'tbh_stages.json', encoding='utf-8'))
+    stages = json.load(open(BASE / 'data' / 'tbh_stages.json', encoding='utf-8'))
     keys = [s['key'] for s in stages]
     out = {}
     for i, key in enumerate(keys, 1):
@@ -80,7 +80,7 @@ def main():
         }
         print(f'[{i}/{len(keys)}] {key}  monsters={len(monsters)}  mBox={"y" if out[str(key)]["monsterBox"] else "-"}  bBox={"y" if out[str(key)]["bossBox"] else "-"}')
         time.sleep(0.3)
-    json.dump(out, open(BASE / 'tbh_stage_details.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+    json.dump(out, open(BASE / 'data' / 'tbh_stage_details.json', 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
     print(f'Saved {len(out)} stages → tbh_stage_details.json')
 
 

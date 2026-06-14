@@ -29,16 +29,10 @@ jobs:
       - name: Fetch Steam Market prices
         env:
           STEAM_COOKIE: ${{ secrets.STEAM_COOKIE }}
-        run: |
-          cd tbh_march
-          python fetch_prices.py
+        run: python fetch_prices.py
 
       - name: Rebuild index.html + prices.json
-        run: |
-          cd tbh_march
-          python gen_tbh.py
-          cp index.html ../index.html
-          cp prices.json ../prices.json
+        run: python gen_tbh.py
 
       - name: Commit & push if changed
         run: |

@@ -62,7 +62,7 @@ def main():
 
     ok = 0
     for url, filename, label in FILES:
-        dest = os.path.join(BASE, filename)
+        dest = os.path.join(BASE, 'data', filename)
         if download(url, dest, label):
             ok += 1
 

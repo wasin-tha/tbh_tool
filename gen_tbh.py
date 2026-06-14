@@ -5,52 +5,52 @@ from urllib.parse import quote
 import os as _os
 BASE = _os.path.dirname(_os.path.abspath(__file__))
 
-with open(f'{BASE}/tbh_items.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_items.json', encoding='utf-8') as f:
     items_list = json.load(f)
-with open(f'{BASE}/tbh_materials.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_materials.json', encoding='utf-8') as f:
     mats_raw = json.load(f)
-with open(f'{BASE}/tbh_stat_mod_groups.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_stat_mod_groups.json', encoding='utf-8') as f:
     groups_raw = json.load(f)
-with open(f'{BASE}/tbh_stat_mods.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_stat_mods.json', encoding='utf-8') as f:
     mods_raw = json.load(f)
-with open(f'{BASE}/tbh_stat_strings.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_stat_strings.json', encoding='utf-8') as f:
     stat_strings = json.load(f)
-with open(f'{BASE}/tbh_prices.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_prices.json', encoding='utf-8') as f:
     prices_raw = json.load(f)
-with open(f'{BASE}/tbh_items_detail.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_items_detail.json', encoding='utf-8') as f:
     items_detail = json.load(f)
-with open(f'{BASE}/tbh_gear_types.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_gear_types.json', encoding='utf-8') as f:
     gear_types_raw = json.load(f)
-with open(f'{BASE}/tbh_heroes.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_heroes.json', encoding='utf-8') as f:
     heroes_raw = json.load(f)
-with open(f'{BASE}/tbh_skills.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_skills.json', encoding='utf-8') as f:
     skills_raw = json.load(f)
-with open(f'{BASE}/tbh_passive_skills.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_passive_skills.json', encoding='utf-8') as f:
     passives_raw = json.load(f)
-with open(f'{BASE}/tbh_stages.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_stages.json', encoding='utf-8') as f:
     stages_raw = json.load(f)
-with open(f'{BASE}/tbh_stage_details.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_stage_details.json', encoding='utf-8') as f:
     stage_details_raw = json.load(f)
 # totalHP ต่อด่าน (108 ด่าน farmable; ACTBOSS ไม่มี) — ใช้ใน Farm calculator
-with open(f'{BASE}/tbh_stage_hp.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_stage_hp.json', encoding='utf-8') as f:
     stage_hp_raw = json.load(f)
 # EXP ที่ต้องใช้ต่อเลเวล (ExpForLevelUp) — ใช้คำนวณ "EXP ที่เหลือถึงเลเวลถัดไป" ใน Farm
-with open(f'{BASE}/tbh_levels.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_levels.json', encoding='utf-8') as f:
     levels_raw = json.load(f)
 # (tbh_portal_map.json ไม่ได้ใช้แล้ว — เปลี่ยนเป็นตาราง stage จึงไม่ load)
-with open(f'{BASE}/tbh_pets.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_pets.json', encoding='utf-8') as f:
     pets_raw = json.load(f)
-with open(f'{BASE}/tbh_monsters.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_monsters.json', encoding='utf-8') as f:
     monsters_raw = json.load(f)
-with open(f'{BASE}/tbh_unique_mods_desc.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_unique_mods_desc.json', encoding='utf-8') as f:
     unique_mods_desc = json.load(f)
-with open(f'{BASE}/tbh_recipes.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_recipes.json', encoding='utf-8') as f:
     recipes_raw = json.load(f)
-with open(f'{BASE}/tbh_rune_tree.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_rune_tree.json', encoding='utf-8') as f:
     rune_tree_raw = json.load(f)
-with open(f'{BASE}/tbh_runes.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_runes.json', encoding='utf-8') as f:
     runes_raw = json.load(f)
-with open(f'{BASE}/tbh_skill_maxlevel.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_skill_maxlevel.json', encoding='utf-8') as f:
     _ml = json.load(f)
 skill_maxlevel   = {int(k): v for k, v in _ml.get('skills', {}).items()}
 passive_maxlevel = {int(k): v for k, v in _ml.get('passives', {}).items()}
@@ -463,9 +463,9 @@ import json as _json2
 HEROES_JSON = _json2.dumps(heroes_skills_data, ensure_ascii=False, separators=(',',':'))
 
 # ── Hero skill trees (level-gated, จาก wiki /heroes) — เติม URL ไอคอน + ชื่อ/คำอธิบายไทย ──
-with open(f'{BASE}/tbh_hero_trees.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_hero_trees.json', encoding='utf-8') as f:
     hero_trees_raw = _json2.load(f)
-with open(f'{BASE}/tbh_skill_th.json', encoding='utf-8') as f:
+with open(f'{BASE}/data/tbh_skill_th.json', encoding='utf-8') as f:
     _skill_th = _json2.load(f)   # {'names':{key:{en,th}}, 'descs':{key:{en,th}}}
 for _h in hero_trees_raw:
     for _t in _h['tree']:

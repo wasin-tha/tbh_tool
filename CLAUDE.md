@@ -14,24 +14,24 @@ Repo: https://github.com/wasin-tha/tbh_tool.git
 **ห้ามแก้ `index.html` ตรงๆ** — ต้องแก้ `gen_tbh.py` แล้ว rebuild
 
 ```
-tbh_march/
+tbh_tool/   (= git repo root — มี .git/ .github/ ของตัวเอง)
   gen_tbh.py                  ← แก้ที่นี่เท่านั้น
   fetch_prices.py             ← ดึงราคา Steam Market (resume ได้, มี % + ETA)
   update_data.py              ← ดึง game data ใหม่จาก wiki + rebuild อัตโนมัติ
-  tbh_*.json                  ← raw data (ดู Data sources)
+  data/tbh_*.json             ← raw data (ดู Data sources; gen/fetch/update_data อ่าน-เขียนที่นี่)
   img/                        ← รูป pet (Bat.png, ...)
-  index.html                  ← OUTPUT (generated — อย่าแก้มือ)
+  index.html                  ← OUTPUT (generated — อย่าแก้มือ; serve โดย GitHub Pages ที่ repo root)
+  prices.json                 ← OUTPUT (served; Action เป็นเจ้าของ — อย่า commit ตัว local)
 ```
 
-Build: `cd D:/Coding/other/tbh_march && python gen_tbh.py`
+Build: `cd D:/Coding/other/tbh_tool && python gen_tbh.py`
 
 ### Deploy (เมื่อผู้ใช้สั่งเท่านั้น)
-git repo root คือ `D:/Coding/other` — ตอนนี้ **track ทั้ง source แล้ว** (gen_tbh.py, fetch_prices.py, tbh_*.json, .github/) เพื่อให้ GitHub Actions รันได้ (ยกเว้น `steam_cookie.txt` — .gitignore กันไว้)
+git repo root คือ `D:/Coding/other/tbh_tool` — track source ทั้งหมด (gen_tbh.py, fetch_prices.py, tbh_*.json, .github/) เพื่อให้ GitHub Actions รันได้ (ยกเว้น `steam_cookie.txt` — .gitignore กันไว้). gen_tbh.py เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ → **ไม่ต้อง cp อีกแล้ว**
 ```bash
-cd D:/Coding/other
+cd D:/Coding/other/tbh_tool
 git pull origin main          # ★ ดึง auto-commit ราคาจาก Action ก่อนเสมอ ไม่งั้น push ชน
-cp tbh_march/index.html index.html
-git add index.html tbh_march/gen_tbh.py   # + ไฟล์ที่แก้ (★ อย่า add prices.json จากเครื่อง!)
+git add index.html gen_tbh.py   # + ไฟล์ที่แก้ (★ อย่า add prices.json จากเครื่อง!)
 git commit -m "..." && git push origin main
 ```
 Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
@@ -41,14 +41,14 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 - `gen_tbh.py` เขียน 2 ไฟล์: `index.html` (code) + `prices.json` (id → `{l,v}` + `_at`)
 - **เครื่องเรา commit แค่ `index.html`** (code) — ห้าม add `prices.json` (จะพ่นราคาเก่าทับ)
 - **Action เป็นเจ้าของ `prices.json`** คนเดียว (อัปเดตทุก ชม.) → ไม่มีทางชนกัน
-- `root/prices.json` = ไฟล์ที่ serve (track ใน git); `tbh_march/prices.json` + `tbh_march/tbh_prices.json` = gitignore
+- `prices.json` (repo root) = ไฟล์ที่ serve (track ใน git); `data/tbh_prices.json` (raw source) = gitignore — ⚠️ gen_tbh.py เขียนทับ `prices.json` ที่ track ตอนรัน local ด้วย จึง **อย่า `git add prices.json`** จากเครื่อง (Action เป็นเจ้าของ)
 - ⚠️ เปิด `file://` ตรงๆ ราคาไม่ขึ้น (browser บล็อก fetch local) — ต้องผ่าน http/Pages หรือ `python -m http.server`
 - JS: `PRICES{}`, `priceNum(id)`, `priceRowInner(id)`, `fillPrices()`, `fmtPriceDate()` (เวลาไทยจาก `_at`)
 - **★ auto-refresh ราคาในหน้าที่เปิดค้าง** (`loadPrices(announce)`): poll `prices.json` ทุก 10 นาที (เฉพาะ `visibilityState==='visible'`) + ดึงใหม่ตอน `visibilitychange` (กลับมาที่แท็บ) → อัปเฉพาะเมื่อ `_at` เปลี่ยน (ไม่งั้นไม่แตะ DOM) + toast เล็ก "ราคาอัปเดตแล้ว" (`showPriceToast`)
 
 ### GitHub Actions — อัปเดตราคาอัตโนมัติ (`.github/workflows/update-prices.yml`)
 - trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 30 นาที** (ตรงเวลากว่า GitHub cron) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
-- ทำ: fetch_prices.py → gen_tbh.py → cp `index.html`+`prices.json` ไป root → commit
+- ทำ: fetch_prices.py → gen_tbh.py (เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ) → commit
 - **Secrets ที่ต้องตั้งในหน้า GitHub** (ผมตั้งให้ไม่ได้): `STEAM_COOKIE` (steamLoginSecure), `DISCORD_WEBHOOK`
 - ถ้า fail → **ยิง Discord เฉพาะเมื่อ fail 4 ครั้งติด** (เช็ค 3 run ก่อนหน้าผ่าน `gh api`, ต้องมี `permissions: actions:read`) — รอบเดียว/สองพังชั่วคราว (rate limit) ไม่เตือน
 - Public repo = Actions ฟรีไม่จำกัด
