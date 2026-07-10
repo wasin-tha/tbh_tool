@@ -47,15 +47,16 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 - **★ auto-refresh ราคาในหน้าที่เปิดค้าง** (`loadPrices(announce)`): poll `prices.json` ทุก 10 นาที (เฉพาะ `visibilityState==='visible'`) + ดึงใหม่ตอน `visibilitychange` (กลับมาที่แท็บ) → อัปเฉพาะเมื่อ `_at` เปลี่ยน (ไม่งั้นไม่แตะ DOM) + toast เล็ก "ราคาอัปเดตแล้ว" (`showPriceToast`)
 
 ### GitHub Actions — อัปเดตราคาอัตโนมัติ (`.github/workflows/update-prices.yml`)
-- trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 30 นาที** (ตรงเวลากว่า GitHub cron) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
+- trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 1 ชม.** (`11 * * * *` — เปลี่ยนจากทุก 30 นาที 2026-07-11, ตรงเวลากว่า GitHub cron) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
 - ทำ: fetch_prices.py → gen_tbh.py (เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ) → commit
 - **★★ รันบน self-hosted runner `nb-march`** (โน้ตบุ๊ก NB-MARCH 192.168.0.171, Windows, IP บ้าน) — ตั้งแต่ 2026-07-09 ~23:00 UTC **Steam ตอบ 429 ให้ IP datacenter ของ GitHub-hosted runner ทุก request** (ยืนยันแล้ว: relogin สำเร็จก็ยังโดน, IP บ้านปกติ) จึงย้าย (2026-07-10). รายละเอียดเครื่อง/วิธีรีโมทดู memory `reference_smb_psexec_remote` + `project-pawworld-server`
   - runner อยู่ `C:\March\actions-runner` (service `actions.runner.wasin-tha-tbh_tool.nb-march` รันเป็น `.\Administrator` — มองไม่เห็นบนจอ), repo checkout ที่ `_work\tbh_tool\tbh_tool`
   - **PATH ของ service ตั้งใน registry** `HKLM\SYSTEM\CurrentControlSet\Services\<svc>\Environment` (python ของ Administrator + Git\cmd) **+ `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`** — ห้ามลบ! เครื่องเป็น locale th-TH ทำ runner crash ใน SecretMasker (Substring out of range) ก่อนเริ่ม step แรก
   - step ทั้งหมดเป็น **PowerShell 5.1** (เครื่องนั้นไม่มี bash/pwsh/gh) — ไม่มี `&&`, เช็ค `$LASTEXITCODE` เอง; ไม่ใช้ `setup-python` (ใช้ python บนเครื่อง), `timeout-minutes: 25`
+  - footprint จริง (วัด 2026-07-11): idle = Runner.Listener ~77MB; ตอนรันงาน ~4 นาที เพิ่ม Worker+python รวม peak ~250-300MB (gen_tbh.py ตัวเดียว peak ~116MB) — เครื่อง 16GB สบายๆ
 - **Secrets ที่ใช้**: `STEAM_USER`+`STEAM_PASS` (auto-login), `STEAM_COOKIE` (fallback รอบแรกเท่านั้น), `DISCORD_WEBHOOK` — `GH_PAT` ไม่ใช้แล้ว (step เขียน cookie กลับ Secret ถูกถอด: self-hosted ใช้ checkout `clean: false` → `steam_cookie.txt` (gitignored) **persist ใน work dir ข้ามรอบเอง**)
 - **★ auto cookie refresh** (`steam_login.py`): cookie `steamLoginSecure` หมด → `fetch_prices.py` เรียก `steam_login.refresh()` ดึง cookie สดเขียน `steam_cookie.txt` แล้วลองยืนยันสกุลเงินใหม่. **ใช้ flow ใหม่ `IAuthenticationService`** (GetPasswordRSAPublicKey → BeginAuthSessionViaCredentials → PollAuthSessionStatus → `steamLoginSecure = steamid%7C%7Caccess_token`) — ไม่ใช้ `WebAuth` ของ lib (เก่า, endpoint `dologin` ตายแล้ว) reuse แค่ `steam.core.crypto` (`rsa_publickey`/`pkcs1v15_encrypt`) เข้ารหัสรหัสผ่าน จึงยังต้อง `pip install steam` (relogin ครั้งเดียว/run; ไม่งั้น exit 2 ตามเดิม). ⚠ บัญชี **ต้องปิด Steam Guard ทั้ง mobile+email** ไม่งั้น login ค้างรอ code
-  - **พฤติกรรมเมื่อ relogin แล้วยังเฟล** (รหัสผิด/Steam Guard เปิดใหม่/บัญชีล็อก/$ เด้งชั่วคราว): `exit 2` → step gen/commit/push **ถูก skip** → ไม่ commit (เว็บใช้ราคาเดิม ไม่มีราคาครึ่งๆ) → cron รอบหน้า (30 นาที) ลองใหม่เอง = **self-healing**. fail ชั่วคราวหายเอง, fail จริงจัง 4 ครั้งติดค่อยเด้ง Discord
+  - **พฤติกรรมเมื่อ relogin แล้วยังเฟล** (รหัสผิด/Steam Guard เปิดใหม่/บัญชีล็อก/$ เด้งชั่วคราว): `exit 2` → step gen/commit/push **ถูก skip** → ไม่ commit (เว็บใช้ราคาเดิม ไม่มีราคาครึ่งๆ) → cron รอบหน้า (1 ชม.) ลองใหม่เอง = **self-healing**. fail ชั่วคราวหายเอง, fail จริงจัง 4 ครั้งติดค่อยเด้ง Discord
 - ถ้า fail → **ยิง Discord เฉพาะเมื่อพัง 4 ครั้งติด** (เช็ค 3 run ก่อนหน้าผ่าน GitHub API, ต้องมี `permissions: actions:read`) — ★ นับ conclusion **ไม่ใช่ success** (แก้บั๊กเดิมที่นับเฉพาะ failure → run ที่โดน `cancelled` จากคิวชนรีเซ็ตตัวนับ ทำให้พัง 40 รอบแต่ Discord เงียบ)
 - Public repo = Actions ฟรีไม่จำกัด (self-hosted ก็ฟรีอยู่แล้ว)
 - มี `update_prices.bat` (local, double-click, **gitignore แล้ว** — มี `STEAM_USER`/`STEAM_PASS` plaintext + path เฉพาะเครื่อง ห้ามหลุด) = ตัวสำรอง: set creds → fetch_prices → gen → `git add index.html prices.json` → `git pull --rebase` → push — ใช้ **full path python** (เลี่ยง Store stub) + ต้องเป็น **CRLF**
@@ -204,7 +205,7 @@ from playwright.sync_api import sync_playwright
    - wiki `/heroes`,`/skills` SSR (manual parse) → `tbh_hero_trees.json` / `tbh_skill_th.json` / `tbh_skill_maxlevel.json`
    - `taskbarherowiki.com/farm` (manual) → `tbh_stage_hp.json` (ดูข้อ 3b)
    - Steam listing scrape (manual) → `tbh_unique_mods_desc.json` (ดูข้อ 3)
-2. ราคา item: ปล่อย GitHub Action รันเอง (ทุก 30 นาที) หรือ `python fetch_prices.py` เอง
+2. ราคา item: ปล่อย GitHub Action รันเอง (ทุก 1 ชม.) หรือ `python fetch_prices.py` เอง
 3. ถ้ามี unique mod ใหม่ → re-scrape `tbh_unique_mods_desc.json`
 3b. ถ้า stage/HP เปลี่ยน → ดึง `tbh_stage_hp.json` ใหม่จาก `taskbarherowiki.com/farm` (parse `__next_f` `stages[]` → key→totalHP) เพราะ stages.json ไม่มี HP
 4. ขอ confirm แล้ว commit (อย่าลืม `git pull` ก่อน — Action push ราคาเรื่อยๆ)
