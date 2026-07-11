@@ -188,10 +188,24 @@ def main():
                 continue
             results, total_count = res
 
-            # currency เด้งเป็น $ กลางทาง → ยกเลิกทั้ง run (กันได้ราคาครึ่งๆ ทับของเดิม)
+            # currency เด้งเป็น $ กลางทาง → currency แกว่งเป็นครั้งคราวแม้ cookie valid (เจอบ่อยหลังหน้าแรกๆ)
+            #   retry หน้าเดิม 5 รอบก่อน (เหมือน pre-check) — recover ได้ ก็ดึงต่อ
+            #   ถ้ายัง $ ค้างครบทุกรอบ = cookie หมดจริง → ยกเลิก ไม่ commit ของครึ่งๆ (เว็บใช้ราคาเดิม)
             if results and THB not in results[0].get('sell_price_text', ''):
-                print('❌ สกุลเงินเปลี่ยนเป็น $ กลางทาง — ยกเลิก ไม่ commit ของครึ่งๆ (เว็บใช้ราคาเดิม)')
-                sys.exit(2)
+                fixed = False
+                for attempt in range(5):
+                    time.sleep(2)
+                    res2 = fetch_page(start)
+                    if res2 in ('RATELIMIT', None):
+                        continue
+                    results, total_count = res2
+                    if results and THB in results[0].get('sell_price_text', ''):
+                        fixed = True; break
+                    ex = results[0].get('sell_price_text', '?') if results else '?'
+                    print(f'  สกุลเงินเด้งเป็น $ กลางทาง ("{ex}") — retry {attempt+1}/5', flush=True)
+                if not fixed:
+                    print('❌ สกุลเงินเปลี่ยนเป็น $ ค้าง (retry แล้วไม่กลับ) — ยกเลิก ไม่ commit ของครึ่งๆ (เว็บใช้ราคาเดิม)')
+                    sys.exit(2)
 
             for it in results:
                 ids = idx.get(it.get('hash_name', ''))
