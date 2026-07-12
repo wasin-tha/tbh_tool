@@ -16,7 +16,7 @@ Repo: https://github.com/wasin-tha/tbh_tool.git
 ```
 tbh_tool/   (= git repo root — มี .git/ .github/ ของตัวเอง)
   gen_tbh.py                  ← แก้ที่นี่เท่านั้น
-  fetch_prices.py             ← ดึงราคา Steam Market (resume ได้, มี % + ETA)
+  fetch_prices.py             ← ดึงราคา Steam Market แบบ anon ผ่าน curl (ไม่ login แล้ว — ดูหัวข้อราคา)
   update_data.py              ← ดึง game data ใหม่จาก wiki + rebuild อัตโนมัติ
   data/tbh_*.json             ← raw data (ดู Data sources; gen/fetch/update_data อ่าน-เขียนที่นี่)
   img/                        ← รูป pet (Bat.png, ...)
@@ -27,7 +27,7 @@ tbh_tool/   (= git repo root — มี .git/ .github/ ของตัวเอ�
 Build: `cd D:/Coding/other/tbh_tool && python gen_tbh.py`
 
 ### Deploy (เมื่อผู้ใช้สั่งเท่านั้น)
-git repo root คือ `D:/Coding/other/tbh_tool` — track source ทั้งหมด (gen_tbh.py, fetch_prices.py, tbh_*.json, .github/) เพื่อให้ GitHub Actions รันได้ (ยกเว้น `steam_cookie.txt` — .gitignore กันไว้). gen_tbh.py เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ → **ไม่ต้อง cp อีกแล้ว**
+git repo root คือ `D:/Coding/other/tbh_tool` — track source ทั้งหมด (gen_tbh.py, fetch_prices.py, tbh_*.json, .github/) เพื่อให้ GitHub Actions รันได้. gen_tbh.py เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ → **ไม่ต้อง cp อีกแล้ว**
 ```bash
 cd D:/Coding/other/tbh_tool
 git pull origin main          # ★ ดึง auto-commit ราคาจาก Action ก่อนเสมอ ไม่งั้น push ชน
@@ -47,20 +47,16 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 - **★ auto-refresh ราคาในหน้าที่เปิดค้าง** (`loadPrices(announce)`): poll `prices.json` ทุก 10 นาที (เฉพาะ `visibilityState==='visible'`) + ดึงใหม่ตอน `visibilitychange` (กลับมาที่แท็บ) → อัปเฉพาะเมื่อ `_at` เปลี่ยน (ไม่งั้นไม่แตะ DOM) + toast เล็ก "ราคาอัปเดตแล้ว" (`showPriceToast`)
 
 ### GitHub Actions — อัปเดตราคาอัตโนมัติ (`.github/workflows/update-prices.yml`)
-- trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 1 ชม.** (`11 * * * *` — เปลี่ยนจากทุก 30 นาที 2026-07-11, ตรงเวลากว่า GitHub cron) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
-- ทำ: fetch_prices.py → gen_tbh.py (เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ) → commit
-- **★★ รันบน self-hosted runner `nb-march`** (โน้ตบุ๊ก NB-MARCH 192.168.0.171, Windows, IP บ้าน) — ตั้งแต่ 2026-07-09 ~23:00 UTC **Steam ตอบ 429 ให้ IP datacenter ของ GitHub-hosted runner ทุก request** (ยืนยันแล้ว: relogin สำเร็จก็ยังโดน, IP บ้านปกติ) จึงย้าย (2026-07-10). รายละเอียดเครื่อง/วิธีรีโมทดู memory `reference_smb_psexec_remote` + `project-pawworld-server`
-  - runner อยู่ `C:\March\actions-runner` (service `actions.runner.wasin-tha-tbh_tool.nb-march` รันเป็น `.\Administrator` — มองไม่เห็นบนจอ), repo checkout ที่ `_work\tbh_tool\tbh_tool`
-  - **PATH ของ service ตั้งใน registry** `HKLM\SYSTEM\CurrentControlSet\Services\<svc>\Environment` (python ของ Administrator + Git\cmd) **+ `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`** — ห้ามลบ! เครื่องเป็น locale th-TH ทำ runner crash ใน SecretMasker (Substring out of range) ก่อนเริ่ม step แรก
-  - step ทั้งหมดเป็น **PowerShell 5.1** (เครื่องนั้นไม่มี bash/pwsh/gh) — ไม่มี `&&`, เช็ค `$LASTEXITCODE` เอง; ไม่ใช้ `setup-python` (ใช้ python บนเครื่อง), `timeout-minutes: 25`
-  - footprint จริง (วัด 2026-07-11): idle = Runner.Listener ~77MB; ตอนรันงาน ~4 นาที เพิ่ม Worker+python รวม peak ~250-300MB (gen_tbh.py ตัวเดียว peak ~116MB) — เครื่อง 16GB สบายๆ
-- **Secrets ที่ใช้**: `STEAM_USER`+`STEAM_PASS` (auto-login), `STEAM_COOKIE` (fallback รอบแรกเท่านั้น), `DISCORD_WEBHOOK` — `GH_PAT` ไม่ใช้แล้ว (step เขียน cookie กลับ Secret ถูกถอด: self-hosted ใช้ checkout `clean: false` → `steam_cookie.txt` (gitignored) **persist ใน work dir ข้ามรอบเอง**)
-- **★ auto cookie refresh** (`steam_login.py`): cookie `steamLoginSecure` หมด → `fetch_prices.py` เรียก `steam_login.refresh()` ดึง cookie สดเขียน `steam_cookie.txt` แล้วลองยืนยันสกุลเงินใหม่. **ใช้ flow ใหม่ `IAuthenticationService`** (GetPasswordRSAPublicKey → BeginAuthSessionViaCredentials → PollAuthSessionStatus → `steamLoginSecure = steamid%7C%7Caccess_token`) — ไม่ใช้ `WebAuth` ของ lib (เก่า, endpoint `dologin` ตายแล้ว) reuse แค่ `steam.core.crypto` (`rsa_publickey`/`pkcs1v15_encrypt`) เข้ารหัสรหัสผ่าน จึงยังต้อง `pip install steam` (relogin ครั้งเดียว/run; ไม่งั้น exit 2 ตามเดิม). ⚠ บัญชี **ต้องปิด Steam Guard ทั้ง mobile+email** ไม่งั้น login ค้างรอ code
-  - **พฤติกรรมเมื่อ relogin แล้วยังเฟล** (รหัสผิด/Steam Guard เปิดใหม่/บัญชีล็อก/$ เด้งชั่วคราว): `exit 2` → step gen/commit/push **ถูก skip** → ไม่ commit (เว็บใช้ราคาเดิม ไม่มีราคาครึ่งๆ) → cron รอบหน้า (1 ชม.) ลองใหม่เอง = **self-healing**. fail ชั่วคราวหายเอง, fail จริงจัง 4 ครั้งติดค่อยเด้ง Discord
-- ถ้า fail → **ยิง Discord เฉพาะเมื่อพัง 4 ครั้งติด** (เช็ค 3 run ก่อนหน้าผ่าน GitHub API, ต้องมี `permissions: actions:read`) — ★ นับ conclusion **ไม่ใช่ success** (แก้บั๊กเดิมที่นับเฉพาะ failure → run ที่โดน `cancelled` จากคิวชนรีเซ็ตตัวนับ ทำให้พัง 40 รอบแต่ Discord เงียบ)
-- Public repo = Actions ฟรีไม่จำกัด (self-hosted ก็ฟรีอยู่แล้ว)
-- มี `update_prices.bat` (local, double-click, **gitignore แล้ว** — มี `STEAM_USER`/`STEAM_PASS` plaintext + path เฉพาะเครื่อง ห้ามหลุด) = ตัวสำรอง: set creds → fetch_prices → gen → `git add index.html prices.json` → `git pull --rebase` → push — ใช้ **full path python** (เลี่ยง Store stub) + ต้องเป็น **CRLF**
-- action เวอร์ชัน: `actions/checkout@v5` (setup-python ถอดออกแล้ว)
+- trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 1 ชม.** (`11 * * * *` — ตรงเวลากว่า GitHub cron) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
+- ทำ: fetch_prices.py → gen_tbh.py (เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ) → commit — **ทั้ง run ~15 วินาที**
+- **★★ รันบน `ubuntu-latest` (GitHub-hosted) — ย้ายกลับ 2026-07-12** หลังพิสูจน์ว่า "Steam บล็อก IP datacenter" ที่เชื่อกัน (2026-07-09) จริงๆ คือ **Steam กรอง TLS fingerprint ของ Python สำหรับ anon request** (Python โดน 429 ทุกนัดแม้จาก IP บ้าน แต่ curl ผ่านตลอด ทั้งจากบ้านและ GitHub) → fetch เปลี่ยนเป็น anon ผ่าน curl แล้วไม่ต้องพึ่ง IP บ้าน/login อีก
+- **Secrets ที่ใช้เหลือ `DISCORD_WEBHOOK` ตัวเดียว** — `STEAM_USER`/`STEAM_PASS`/`STEAM_COOKIE` ไม่ใช้แล้ว (ลบจาก repo settings ได้), `steam_login.py` ถูกลบออกจาก repo (อยู่ใน git history ถ้าต้องขุด)
+- step เป็น bash ล้วน, ไม่มี pip dependency (fetch ใช้ curl + stdlib), `timeout-minutes: 15`, `actions/checkout@v5`
+- fetch fail (exit 2/3) → step gen/commit **ถูก skip** → ไม่ commit (เว็บใช้ราคาเดิม ไม่มีราคาครึ่งๆ) → cron รอบหน้าลองใหม่เอง = **self-healing**
+- ถ้า fail → **ยิง Discord เฉพาะเมื่อพัง 4 ครั้งติด** (เช็ค 3 run ก่อนหน้าผ่าน GitHub API, ต้องมี `permissions: actions:read`) — นับ conclusion **ไม่ใช่ success** (กัน run ที่โดน `cancelled` รีเซ็ตตัวนับ). step นี้เขียนใหม่เป็น bash+jq 2026-07-12 — ของเดิม (PS 5.1 บน self-hosted) มีบั๊ก encoding ข้อความไทย → parse error **ไม่เคยส่งจริงเลย**
+- Public repo = Actions ฟรีไม่จำกัด
+- **runner self-hosted `nb-march` เดิม (โน้ตบุ๊ก NB-MARCH): ปิดแล้ว 2026-07-12** — service `actions.runner.wasin-tha-tbh_tool.nb-march` ถูก stop + ตั้ง start=disabled (กันเด้งกลับตอนรีบูต) ตามคำสั่งผู้ใช้; ไฟล์ยังอยู่ที่ `C:\March\actions-runner` เผื่อ rollback (วิธีรีโมทดู memory `reference_smb_psexec_remote`)
+- มี `update_prices.bat` (local, double-click, gitignore แล้ว) = ตัวสำรอง: fetch → gen → `git add index.html prices.json` → `git pull --rebase` → push — env STEAM_* ในนั้นไม่จำเป็นแล้ว (fetch เป็น anon), ใช้ **full path python** (เลี่ยง Store stub) + ต้องเป็น **CRLF**; รันจากเครื่องไทยจะได้ ฿ ตรงจาก Steam เลย
 
 ## Data sources (taskbarhero.wiki)
 ไฟล์ JSON ทั้งหมดเก็บใน `data/`. WebFetch โดน 403 — ใช้ `curl -A "Mozilla/5.0"` หรือ `update_data.py` (ดึง 18 ไฟล์ที่ endpoint คืน JSON ตรงๆ; ที่เหลือดึงพิเศษ — ดู "วิธีอัปเดต"):
@@ -93,15 +89,18 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 **maxLevel ของ skill/passive** ฝังใน HTML ของ `/skills` (SSR `body` JSON) → `tbh_skill_maxlevel.json`
 (active skills cap ที่ Lv5 ปัจจุบัน; data มีถึง Lv10)
 
-### ราคา Steam Market (THB) — `fetch_prices.py`
+### ราคา Steam Market (฿) — `fetch_prices.py` (★ rewrite 2026-07-12: anon ไม่ login แล้ว)
 - ใช้ endpoint **`/market/search/render/`** ไล่ดู listing ทั้งเกมทีละหน้า แล้ว match hash_name กับ item เรา
-  (เร็วกว่ายิงทีละ item — ~75 หน้า; **Steam cap หน้าละ 10 ตายตัว** ขอ count เกินก็ได้ 10)
-- **ต้องมี cookie** (steamLoginSecure) ราคาถึงเป็น ฿ (THB) ตามบัญชี — อ่านจาก `steam_cookie.txt` หรือ env `STEAM_COOKIE`
-  ถ้าไม่มี/หมดอายุ → ได้ USD → exit code 2 (ให้ bat/Action หยุด)
-- `DELAY=2.0s` ระหว่างหน้า (~3.5 นาที); cooldown 45s เมื่อ 429
-- `_fetched_at` บันทึกเป็น **เวลาไทย (UTC+7)** เสมอ (runner เป็น UTC) → gen ใส่เป็น `_at` ใน prices.json → JS แสดง "ราคา • อัพเดท"
-- exit codes: 2 = cookie/สกุลเงินผิด, 3 = ไม่ได้ราคาเลย (rate limit) — Action ใช้เช็คว่าจะ deploy ไหม
+  (~75 หน้า; **Steam cap หน้าละ 10 ตายตัว** — ยืนยันซ้ำ 2026-07-12 ขอ count=100 ก็ได้ 10)
+- **★ ห้ามยิง Steam ด้วย requests/urllib** — Steam กรอง **TLS fingerprint ของ Python** สำหรับ anon: Python โดน 429 ทุกนัด (แม้ IP บ้าน, แม้เว้น 75 วิ) แต่ **curl ผ่านตลอด** → ยิงผ่าน `curl` subprocess (`curl_get()`)
+- **สกุลเงินของ anon = ตามประเทศของ IP** (เลือกได้แค่สกุลบ้านตัวเองหรือ USD): ส่ง `currency=14` ไว้ —
+  รันจากเครื่องไทย → ได้ **฿ ตรงๆ เป๊ะ**; รันบน GitHub (IP US) → Steam ตอบ $ → **แปลงเป็น ฿ ด้วยเรตตลาด** จาก open.er-api.com (สำรอง frankfurter.app; sanity 20<rate<60) — เทียบเรตแฝง Valve แบบ same-timestamp แล้ว**คลาด ≤3% (ของแพง ~0.1%)** ส่วนคลาดหลักคือ Steam ปัดเศษราคา ฿ เอง (เช่น $0.04→฿1.29)
+- **ดึงขนาน** ThreadPoolExecutor 6 workers (env `TBH_CONC`), delay ~0.3s+jitter ต่อ request (env `TBH_DELAY`), 429 → backoff 30s×ครั้ง — ดึงครบ 75 หน้าใน **~8 วิ** บน GitHub. ⚠️ ยิงซ้ำหลายรอบติดกันจาก IP เดิมใน ~5 นาที จะเริ่มโดน 429 (โควตา anon ต่อ IP) — GitHub ได้ IP ใหม่ทุก run เลยไม่เจอ
+- **หน้าไหนพังถาวร (ครบ 5 retry) → exit 3 ทั้ง run ไม่เขียนไฟล์** — กันราคาชุดครึ่งๆ (เว็บใช้ราคาเดิม รอ cron รอบหน้า)
+- `_fetched_at` บันทึกเป็น **เวลาไทย (UTC+7)** เสมอ (runner เป็น UTC) → gen ใส่เป็น `_at` ใน prices.json → JS แสดง "ราคา • อัพเดท"; `_rate` = เรตที่ใช้แปลง (ไม่มี key นี้ = ได้ ฿ ตรงจาก Steam) — gen ข้าม key ที่ขึ้นต้น `_` ทั้งหมด
+- exit codes: 2 = หาเรตแปลงไม่ได้ (er-api+frankfurter ล่มคู่), 3 = ดึงไม่ครบ/ไม่ได้ราคาเลย — Action ใช้เช็คว่าจะ deploy ไหม
 - ใช้: `python fetch_prices.py [--mat-only|--gear-only|--reset]`
+- ⚠️ endpoint `priceoverview` (ทีละ item) ใช้จากเครื่องไทยได้ (anon ผ่าน curl, `currency=` ได้ทุกสกุล) แต่**โดนบล็อกจาก IP datacenter** — อย่าใช้ใน Action
 
 ### Unique mod descriptions — `tbh_unique_mods_desc.json`
 - wiki มีแค่ key (เช่น `ExplosiveBoltHalf`) ไม่มี description
