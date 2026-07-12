@@ -55,7 +55,7 @@ with open(f'{BASE}/data/tbh_skill_maxlevel.json', encoding='utf-8') as f:
 skill_maxlevel   = {int(k): v for k, v in _ml.get('skills', {}).items()}
 passive_maxlevel = {int(k): v for k, v in _ml.get('passives', {}).items()}
 
-prices = {int(k): v for k, v in prices_raw.items() if k != '_fetched_at'}
+prices = {int(k): v for k, v in prices_raw.items() if not str(k).startswith('_')}  # ข้าม _fetched_at/_rate
 
 # ราคาแยกออกจาก index.html → โหลด prices.json ตอน runtime (JS เติมราคา)
 # placeholder span (เวลา/ราคาเติมด้วย JS จาก prices.json — ดู fillPrices ใน JS)

@@ -1,78 +1,45 @@
 #!/usr/bin/env python3
 """
-fetch_prices.py — ดึงราคา Steam Market (THB) สำหรับ TBH materials + equipment
+fetch_prices.py — ดึงราคา Steam Market (฿) สำหรับ TBH materials + equipment
 
-ใช้ Steam Market "search/render" endpoint ที่คืน JSON ทีละ 10 ตัว/หน้า
-→ ดึงครบทั้ง mat + gear ใน ~75 requests (เร็วกว่ายิงทีละ item มาก, โดน ban ยากกว่า)
+★ เวอร์ชัน anon (2026-07-12) — ไม่ใช้ login/cookie อีกแล้ว:
+  - ยิงผ่าน curl (subprocess) — Steam กรอง TLS fingerprint ของ Python สำหรับ anon
+    (Python โดน 429 ทุกนัด, curl ผ่าน — พิสูจน์แล้วทั้ง IP บ้านและ GitHub runner)
+  - anon ได้สกุลเงินตาม IP ประเทศ: IP ไทย → ฿ ตรงๆ, IP นอก (GitHub) → $ แล้วแปลงเป็น ฿
+    ด้วยเรต USD→THB จาก open.er-api.com (สำรอง frankfurter.app)
+    เทียบเรตแฝง Valve แล้วคลาด ≤3% (ของแพง <1%; ทดสอบ same-timestamp 12 items 2026-07-12)
+  - ดึงขนานหลายหน้า (default 6 workers) → เร็วกว่าเดิมมาก (เดิม sequential ~3.5 นาที)
+  - หน้าไหนพังถาวร → exit 3 (ไม่ commit ของครึ่งๆ — เว็บใช้ราคาเดิม รอรอบหน้า)
 
-รัน:
-  python fetch_prices.py              # ดึงราคาทุกอย่าง (mat + gear)
-  python fetch_prices.py --mat-only   # เก็บเฉพาะ materials
-  python fetch_prices.py --gear-only  # เก็บเฉพาะ equipment
-  python fetch_prices.py --reset      # ล้าง progress แล้วดึงใหม่ทั้งหมด
+ใช้:
+  python fetch_prices.py [--mat-only|--gear-only|--reset]
+  env: TBH_CONC = จำนวน workers (default 6), TBH_DELAY = วินาทีหน่วงต่อ worker (default 0.3)
+exit codes: 2 = หาเรตแปลงไม่ได้, 3 = ราคาไม่ครบ/ไม่ได้เลย — Action ใช้เช็คว่าจะ deploy ไหม
 """
-import json, time, sys, os
+import json, os, random, re, subprocess, sys, time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
+
 TH_TZ = timezone(timedelta(hours=7))  # เวลาไทย (runner เป็น UTC จึงต้อง fix)
 sys.stdout.reconfigure(encoding='utf-8')
-try:
-    import requests
-except ImportError:
-    print('ติดตั้ง requests ก่อน: pip install requests')
-    sys.exit(1)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 BASE        = os.path.dirname(os.path.abspath(__file__))
 APP_ID      = '3678970'
-CURRENCY    = 14        # 14 = บาท (THB) — ห้ามใช้ 40
-PAGE_SIZE   = 10        # Steam cap หน้าละ 10 (beta)
-DELAY       = 2.0       # วินาที ระหว่างหน้า (~3.5 นาที; ลดได้อีกแต่เสี่ยง 429 มากขึ้น)
-COOLDOWN    = 45        # วินาที เมื่อโดน 429
-MAX_RETRIES = 3         # retry ต่อหน้า หลัง 429
+PAGE_SIZE   = 10        # Steam cap หน้าละ 10 ตายตัว (ยืนยันซ้ำ 2026-07-12: count=100 ก็ได้ 10)
+CONC        = int(os.environ.get('TBH_CONC', '6'))
+DELAY       = float(os.environ.get('TBH_DELAY', '0.3'))  # หน่วงเล็กน้อยต่อ request กัน burst แรงเกิน
+COOLDOWN    = 30        # วินาทีฐาน เมื่อโดน 429 (ทวีคูณตามครั้ง)
+MAX_RETRIES = 5
+UA          = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+# currency=14 (฿): anon ให้ได้เฉพาะ "สกุลตามประเทศของ IP" หรือ USD —
+#   IP ไทย → ได้ ฿ ตรงๆ (เป๊ะ ไม่ต้องแปลง), IP นอก (GitHub) → Steam ตอบ $ มาแทน → แปลงเอา
 RENDER_URL  = ('https://steamcommunity.com/market/search/render/'
-               f'?norender=1&appid={APP_ID}&currency={CURRENCY}'
-               '&sort_column=popular&sort_dir=desc')
-HEADERS     = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+               f'?norender=1&appid={APP_ID}&currency=14&sort_column=popular&sort_dir=desc')
 THB         = '฿'  # ฿
 
 PRICES_FILE = os.path.join(BASE, 'data', 'tbh_prices.json')
-COOKIE_FILE = os.path.join(BASE, 'steam_cookie.txt')  # วาง steamLoginSecure ที่นี่ (ห้าม commit!)
 LEG_PLUS    = {'LEGENDARY','IMMORTAL','ARCANA','BEYOND','CELESTIAL','DIVINE','COSMIC'}
-
-def load_cookies():
-    """อ่าน Steam login cookie → ทำให้ render คืนราคาตามสกุลเงินบัญชี (฿) แทน USD
-    รองรับ: ค่า steamLoginSecure ล้วน หรือ cookie header เต็ม ('a=1; b=2')"""
-    raw = ''
-    if os.path.exists(COOKIE_FILE):
-        with open(COOKIE_FILE, encoding='utf-8') as f:
-            raw = f.read().strip()
-    raw = raw or os.environ.get('STEAM_COOKIE', '').strip()
-    if not raw:
-        return None
-    if ';' in raw or ('=' in raw and 'steamLoginSecure' in raw):
-        jar = {}
-        for part in raw.split(';'):
-            if '=' in part:
-                k, v = part.strip().split('=', 1)
-                jar[k] = v
-        return jar or None
-    return {'steamLoginSecure': raw}
-
-# --no-cookie = ข้าม cookie (ใช้ตอนรันบนเครื่อง IP ไทย → render คืน ฿ ตาม IP เลย ไม่ต้องพึ่ง cookie)
-COOKIES = None if '--no-cookie' in sys.argv else load_cookies()
-
-def try_relogin():
-    """cookie หมดอายุ + มี STEAM_USER/STEAM_PASS → ล็อกอินใหม่ คืน cookie jar สด | None"""
-    if not (os.environ.get('STEAM_USER') and os.environ.get('STEAM_PASS')):
-        return None
-    try:
-        import steam_login
-        steam_login.refresh()        # login + เขียน steam_cookie.txt
-        print('  🔄 cookie หมด → ล็อกอิน Steam ใหม่ + เขียน cookie สดแล้ว', flush=True)
-        return load_cookies()
-    except Exception as e:
-        print(f'  ⚠ auto re-login ล้มเหลว: {e}', flush=True)
-        return None
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def load_json(path, default=None):
@@ -84,6 +51,15 @@ def load_json(path, default=None):
 def save_json(path, data):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def curl_get(url, timeout=20):
+    """GET ผ่าน curl → (status:int, body:str) — ห้ามใช้ requests/urllib กับ Steam (โดนกรอง fingerprint)"""
+    r = subprocess.run(
+        ['curl', '-s', '--compressed', '-A', UA, '-m', str(timeout), '-w', '\n%{http_code}', url],
+        capture_output=True, text=True, encoding='utf-8', errors='replace')
+    out = r.stdout or ''
+    body, _, code = out.rpartition('\n')
+    return (int(code) if code.strip().isdigit() else 0), body
 
 # ── Build  market_hash_name → item_id  index ───────────────────────────────────
 def build_index(mode='all'):
@@ -104,28 +80,64 @@ def build_index(mode='all'):
             idx.setdefault(f'{name} ({grade.capitalize()}) A', []).append(item['id'])  # Steam hash: variant A
     return idx
 
-# ── Fetch one page ─────────────────────────────────────────────────────────────
+# ── USD→THB rate ──────────────────────────────────────────────────────────────
+def get_usd_thb_rate():
+    """เรตตลาด (er-api → frankfurter) — เทียบเรตแฝง Valve แล้วต่างกัน ~1% | None ถ้าล่มทั้งคู่"""
+    for url, pick in [
+        ('https://open.er-api.com/v6/latest/USD',            lambda d: d['rates']['THB']),
+        ('https://api.frankfurter.app/latest?from=USD&to=THB', lambda d: d['rates']['THB']),
+    ]:
+        try:
+            code, body = curl_get(url)
+            if code == 200:
+                rate = float(pick(json.loads(body)))
+                if 20 < rate < 60:   # sanity ช่วงเรต ฿/$ ที่เป็นไปได้
+                    return rate
+        except Exception as e:
+            print(f'  ⚠ rate source ล้ม ({url.split("/")[2]}): {e}', flush=True)
+    return None
+
+# ── Fetch one page (มี retry/backoff ในตัว — ปลอดภัยต่อการยิงขนาน) ────────────
 def fetch_page(start):
-    """คืน (results:list, total_count:int) | 'RATELIMIT' | None"""
+    """คืน (results:list, total_count:int) | None = พังถาวร"""
     url = f'{RENDER_URL}&start={start}&count={PAGE_SIZE}'
     for attempt in range(MAX_RETRIES):
-        try:
-            r = requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=15)
-            if r.status_code == 200:
-                d = r.json()
-                if not d.get('success'):
-                    return None
-                return d.get('results', []), d.get('total_count', 0)
-            if r.status_code == 429:
-                wait = COOLDOWN + attempt * 20
-                print(f'\n  ⚠ Rate limit! รอ {wait}s...', flush=True)
-                time.sleep(wait)
-                continue
-            return None
-        except Exception as e:
-            print(f'\n  error: {e}', flush=True)
-            time.sleep(5)
-    return 'RATELIMIT'
+        if DELAY:
+            time.sleep(DELAY + random.uniform(0, DELAY))
+        code, body = curl_get(url)
+        if code == 200:
+            try:
+                d = json.loads(body)
+            except json.JSONDecodeError:
+                time.sleep(3); continue
+            if not d.get('success'):
+                time.sleep(3); continue
+            return d.get('results', []), d.get('total_count', 0)
+        if code == 429:
+            wait = COOLDOWN * (attempt + 1) + random.uniform(0, 10)
+            print(f'  ⚠ 429 [start={start}] รอ {wait:.0f}s (ครั้ง {attempt+1}/{MAX_RETRIES})', flush=True)
+            time.sleep(wait)
+            continue
+        time.sleep(5)
+    return None
+
+PRICE_RE = re.compile(r'[\d,]+(?:\.\d+)?')
+
+def to_thb(it, rate):
+    """แปลง 1 result → ราคา ฿ (string 'lowest') | None ถ้า parse ไม่ได้
+    IP ไทย → text เป็น ฿ อยู่แล้ว ใช้ตรงๆ; IP นอก → $ → sell_price(cents)×rate"""
+    txt = it.get('sell_price_text', '')
+    if THB in txt:
+        return txt
+    if '$' in txt:
+        cents = it.get('sell_price')
+        usd = cents / 100.0 if isinstance(cents, (int, float)) and cents else None
+        if usd is None:
+            m = PRICE_RE.search(txt)
+            usd = float(m.group().replace(',', '')) if m else None
+        if usd is not None and rate:
+            return f'{THB}{usd * rate:,.2f}'
+    return None
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
@@ -138,112 +150,89 @@ def main():
     prices = {} if reset else load_json(PRICES_FILE)
 
     print(f'\n{"─"*55}')
-    print(f'  เป้าหมาย   : {len(idx):,} ชื่อ ({n_ids:,} items) — {mode}')
-    print(f'  วิธี       : Steam search/render — หน้าละ {PAGE_SIZE} ตัว')
-    print(f'  Login      : {"✅ ใช้ cookie (ราคาตามบัญชี)" if COOKIES else "❌ ไม่มี cookie (อาจได้ USD)"}')
-    print(f'  Ctrl+C เพื่อหยุด (ราคาที่ได้จะ save ให้)')
+    print(f'  เป้าหมาย : {len(idx):,} ชื่อ ({n_ids:,} items) — {mode}')
+    print(f'  วิธี     : search/render anon ผ่าน curl — ขนาน {CONC} workers')
     print(f'{"─"*55}\n')
 
-    matched, noncur, total_count, start = 0, 0, None, 0
     start_time = time.time()
 
-    # ── ยืนยันสกุลเงิน ฿ ก่อนเริ่ม — currency จาก runner (IP US) แกว่ง: บางครั้งคืน $ ทั้งที่ cookie valid
-    #    ลองหน้าแรก 5 รอบ (ห่าง 2 วิ) ถ้าไม่ได้ ฿ → error ไปเลย (ไม่เริ่มดึง)
-    CUR_RETRIES = 5
-    relogged = False
-    while True:
-        ok = False
-        for attempt in range(CUR_RETRIES):
-            res = fetch_page(0)
-            if res in ('RATELIMIT', None):
-                time.sleep(2); continue
-            r0, total_count = res
-            if r0 and THB in r0[0].get('sell_price_text', ''):
-                ok = True; break   # ได้ ฿ — เริ่มดึงจริง
-            ex = (r0[0].get('sell_price_text', '') if r0 else '?')
-            print(f'  สกุลเงินยังไม่ใช่ ฿ ("{ex}") — retry {attempt+1}/{CUR_RETRIES}', flush=True)
-            time.sleep(2)
-        if ok:
-            break
-        # ไม่ได้ ฿ → ลองล็อกอินใหม่อัตโนมัติครั้งเดียว แล้วยืนยันสกุลเงินซ้ำ
-        if not relogged:
-            newjar = try_relogin()
-            if newjar is not None:
-                globals()['COOKIES'] = newjar
-                relogged = True
+    # หน้าแรก: เอา total_count + ดูสกุลเงินที่ Steam เลือกให้ (ตาม IP)
+    first = fetch_page(0)
+    if first is None:
+        print('❌ หน้าแรกดึงไม่ได้เลย — ยกเลิก')
+        sys.exit(3)
+    results0, total_count = first
+    sample = results0[0].get('sell_price_text', '?') if results0 else '?'
+    native_thb = THB in sample
+    print(f'  สกุลเงินจาก IP นี้: "{sample}" → {"฿ ตรงๆ ไม่ต้องแปลง" if native_thb else "แปลงเป็น ฿ ด้วยเรตตลาด"}')
+
+    rate = None
+    if not native_thb:
+        rate = get_usd_thb_rate()
+        if rate is None:
+            print('❌ หาเรต USD→THB ไม่ได้ (ทั้ง er-api และ frankfurter) — ยกเลิก ไม่เขียนราคา')
+            sys.exit(2)
+        print(f'  เรต: 1 USD = {rate:.4f} THB')
+
+    # ดึงที่เหลือขนานกัน
+    pages = list(range(PAGE_SIZE, total_count, PAGE_SIZE))
+    page_results = {0: results0}
+    failed = []
+    done = 1
+    total_pages = len(pages) + 1
+    with ThreadPoolExecutor(max_workers=CONC) as pool:
+        futs = {pool.submit(fetch_page, s): s for s in pages}
+        for fut in as_completed(futs):
+            s = futs[fut]
+            res = fut.result()
+            done += 1
+            if res is None:
+                failed.append(s)
+                print(f'  ✗ [start={s}] พังถาวร', flush=True)
+            else:
+                page_results[s] = res[0]
+            if done % 10 == 0 or done == total_pages:
+                print(f'  [{done}/{total_pages} หน้า] {done/total_pages*100:.0f}%', flush=True)
+
+    if failed:
+        print(f'\n❌ ดึงไม่ครบ {len(failed)} หน้า ({sorted(failed)[:5]}...) — ไม่เขียนราคา (เว็บใช้ราคาเดิม รอรอบหน้า)')
+        sys.exit(3)
+
+    # จับคู่ + แปลง
+    matched, unparsed = 0, 0
+    for s in sorted(page_results):
+        for it in page_results[s]:
+            ids = idx.get(it.get('hash_name', ''))
+            if not ids:
                 continue
-        print('❌ ลอง 5 รอบแล้วยังไม่ได้ ฿ — cookie หมดอายุ/ไม่ valid')
-        print(f'   ตั้ง STEAM_USER+STEAM_PASS (auto re-login) หรืออัปเดต STEAM_COOKIE/{COOKIE_FILE} เอง')
-        sys.exit(2)  # exit 2 = cookie/สกุลเงินผิด
-
-    try:
-        while total_count is None or start < total_count:
-            res = fetch_page(start)
-            if res == 'RATELIMIT':
-                print('\n⚠ โดน rate limit — หยุดก่อน (ราคาที่ได้ save แล้ว) รอ ~15–30 นาที แล้วรันใหม่')
-                break
-            if not res:
-                print(f'  [start={start}] หน้าว่าง/ผิดพลาด — ข้าม')
-                start += PAGE_SIZE
+            lowest = to_thb(it, rate)
+            if lowest is None:
+                unparsed += 1
                 continue
-            results, total_count = res
-
-            # currency เด้งเป็น $ กลางทาง → currency แกว่งเป็นครั้งคราวแม้ cookie valid (เจอบ่อยหลังหน้าแรกๆ)
-            #   retry หน้าเดิม 5 รอบก่อน (เหมือน pre-check) — recover ได้ ก็ดึงต่อ
-            #   ถ้ายัง $ ค้างครบทุกรอบ = cookie หมดจริง → ยกเลิก ไม่ commit ของครึ่งๆ (เว็บใช้ราคาเดิม)
-            if results and THB not in results[0].get('sell_price_text', ''):
-                fixed = False
-                for attempt in range(5):
-                    time.sleep(2)
-                    res2 = fetch_page(start)
-                    if res2 in ('RATELIMIT', None):
-                        continue
-                    results, total_count = res2
-                    if results and THB in results[0].get('sell_price_text', ''):
-                        fixed = True; break
-                    ex = results[0].get('sell_price_text', '?') if results else '?'
-                    print(f'  สกุลเงินเด้งเป็น $ กลางทาง ("{ex}") — retry {attempt+1}/5', flush=True)
-                if not fixed:
-                    print('❌ สกุลเงินเปลี่ยนเป็น $ ค้าง (retry แล้วไม่กลับ) — ยกเลิก ไม่ commit ของครึ่งๆ (เว็บใช้ราคาเดิม)')
-                    sys.exit(2)
-
-            for it in results:
-                ids = idx.get(it.get('hash_name', ''))
-                if not ids:
-                    continue
-                txt = it.get('sell_price_text', '')
-                if THB not in txt:
-                    noncur += 1
-                    continue
-                rec = {'lowest': txt, 'volume': it.get('sell_listings', ''), 'median': ''}
-                for iid in ids:      # gear: ราคาเดียวกันทุก level ที่ใช้ hash นี้
-                    prices[iid] = rec
-                matched += len(ids)
-
-            pct = (start + len(results)) / total_count * 100 if total_count else 0
-            print(f'  [{start+len(results):>4}/{total_count}] {pct:5.1f}%  จับคู่ได้ {matched:,}', flush=True)
-
-            start += PAGE_SIZE
-            if start < (total_count or 0):
-                time.sleep(DELAY)
-    except KeyboardInterrupt:
-        print('\n⏸ หยุดแล้ว')
+            rec = {'lowest': lowest, 'volume': it.get('sell_listings', ''), 'median': ''}
+            for iid in ids:      # gear: ราคาเดียวกันทุก level ที่ใช้ hash นี้
+                prices[iid] = rec
+            matched += len(ids)
 
     prices['_fetched_at'] = datetime.now(TH_TZ).isoformat(timespec='seconds')
+    if rate:
+        prices['_rate'] = round(rate, 4)   # เรตที่ใช้แปลง (ไม่มี key นี้ = ได้ ฿ ตรงจาก Steam)
+    elif '_rate' in prices:
+        del prices['_rate']
     save_json(PRICES_FILE, prices)
 
     elapsed = time.time() - start_time
-    stored = len([k for k in prices if k != '_fetched_at'])
+    stored = len([k for k in prices if not str(k).startswith('_')])
     print(f'\n{"─"*55}')
     print(f'✅ จับคู่ราคาได้ {matched:,} จาก {n_ids:,} เป้าหมาย  (ใช้เวลา {int(elapsed)}s)')
-    if noncur:
-        print(f'   ⚠ ข้าม {noncur:,} ตัวที่ราคาไม่ใช่ THB (อาจเพราะ IP ไม่ใช่ไทย)')
+    if unparsed:
+        print(f'   ⚠ parse ไม่ได้ {unparsed:,} ตัว (สกุลเงินแปลก?)')
     print(f'   ทั้งหมดใน tbh_prices.json: {stored:,} items')
     print(f'\nขั้นต่อไป: python gen_tbh.py  →  rebuild index.html')
     print(f'{"─"*55}')
 
     if matched == 0:
-        sys.exit(3)  # exit code 3 = ไม่ได้ราคาเลย (rate limit ตั้งแต่แรก) — .bat ไม่ต้อง deploy
+        sys.exit(3)  # exit code 3 = ไม่ได้ราคาเลย — Action/บั๊ตช์ไม่ต้อง deploy
 
 if __name__ == '__main__':
     main()

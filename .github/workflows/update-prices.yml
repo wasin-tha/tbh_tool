@@ -13,75 +13,56 @@ concurrency:
   group: update-prices
   cancel-in-progress: false
 
-# ★ รันบน self-hosted runner "nb-march" (โน้ตบุ๊ก NB-MARCH, Windows, IP บ้าน)
-#   เพราะ Steam บล็อก (429) IP datacenter ของ GitHub-hosted runner ตั้งแต่ 2026-07-09
-#   → step ทั้งหมดเป็น PowerShell 5.1 (ไม่มี bash/pwsh/gh บนเครื่องนั้น)
-defaults:
-  run:
-    shell: powershell
+# ★ กลับมารัน GitHub-hosted (2026-07-12) — fetch เป็น anon ผ่าน curl แล้ว ไม่ต้อง login:
+#   ที่เคยสรุปว่า "Steam บล็อก IP datacenter" จริงๆ คือ Steam กรอง TLS fingerprint ของ Python
+#   (curl ผ่านตลอด — ทดสอบยิง 20 หน้าติดจาก ubuntu-latest แล้ว 200 ทั้งหมด)
+#   anon จาก IP US ได้ราคา $ → fetch_prices.py แปลงเป็น ฿ ด้วยเรตตลาด (คลาด ≤3%)
 
 jobs:
   update:
-    runs-on: [self-hosted, tbh]
-    timeout-minutes: 25   # กันงานลากยาวจนคิวรอบถัดไปกองซ้อน
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
-        with:
-          clean: false    # ★ เก็บ steam_cookie.txt (gitignored) ไว้ข้ามรอบ — relogin ~วันละครั้งพอ
 
-      # python = ตัวที่ลงไว้บนเครื่อง (PATH ตั้งใน registry ของ service) — ไม่ใช้ setup-python
-      - name: Install deps
-        run: pip install --quiet requests steam
+      # ไม่มี dependency แล้ว — fetch ใช้ curl (มีในเครื่อง) + stdlib เท่านั้น
 
-      - name: Fetch Steam Market prices
-        env:
-          STEAM_COOKIE: ${{ secrets.STEAM_COOKIE }}   # fallback รอบแรกเท่านั้น — ปกติใช้ steam_cookie.txt ที่ persist ใน work dir
-          STEAM_USER:   ${{ secrets.STEAM_USER }}
-          STEAM_PASS:   ${{ secrets.STEAM_PASS }}
-        run: python fetch_prices.py
-
-      # หมายเหตุ: step "เขียน cookie กลับ Secret" (gh secret set) ถูกถอดออก —
-      # self-hosted work dir persist อยู่แล้ว cookie สดอยู่ใน steam_cookie.txt ข้ามรอบเอง (ไม่ต้องมี gh/GH_PAT)
+      - name: Fetch Steam Market prices (anon, parallel)
+        run: python3 fetch_prices.py --reset
 
       - name: Rebuild index.html + prices.json
-        run: python gen_tbh.py
+        run: python3 gen_tbh.py
 
       - name: Commit & push if changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html prices.json
-          git diff --cached --quiet
-          if ($LASTEXITCODE -eq 0) { echo "no change"; exit 0 }
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -m "Update Steam Market prices (auto)"
-          $ok = $false
-          foreach ($i in 1..3) {
+          for i in 1 2 3; do
             # rebase บน remote ก่อน push (กัน "fetch first" ตอน remote ขยับ)
-            git pull --rebase origin main
-            if ($LASTEXITCODE -eq 0) {
-              git push
-              if ($LASTEXITCODE -eq 0) { $ok = $true; break }
-            }
+            if git pull --rebase origin main && git push; then exit 0; fi
             echo "push retry $i..."
-            Start-Sleep 4
-          }
-          if (-not $ok) { exit 1 }
+            sleep 4
+          done
+          exit 1
 
       - name: Notify Discord on 4 consecutive failures
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
+          WEBHOOK:  ${{ secrets.DISCORD_WEBHOOK }}
         run: |
           # ส่ง Discord เฉพาะเมื่อพัง 4 ครั้งติด — รอบเดียว/สองพังชั่วคราว (rate limit) ไม่ต้องเตือน
           # current run ยังไม่ completed → 3 run ที่ completed ล่าสุด = 3 รอบก่อนหน้า
-          # ★ นับ "ไม่ success" (failure+cancelled) — เดิมนับเฉพาะ failure ทำให้ run ที่โดน cancel รีเซ็ตตัวนับ เงียบทั้งที่พังยาว
-          $H = @{ Authorization = "Bearer $env:GH_TOKEN"; 'X-GitHub-Api-Version' = '2022-11-28' }
-          try {
-            $r = Invoke-RestMethod -Headers $H "https://api.github.com/repos/${{ github.repository }}/actions/workflows/update-prices.yml/runs?status=completed&per_page=3"
-            $bad = @($r.workflow_runs | Where-Object { $_.conclusion -ne 'success' }).Count
-          } catch { $bad = 0 }
+          # นับ "ไม่ success" (failure+cancelled) — กัน run ที่โดน cancel รีเซ็ตตัวนับ
+          bad=$(curl -s -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/update-prices.yml/runs?status=completed&per_page=3" \
+            | jq '[.workflow_runs[] | select(.conclusion != "success")] | length')
           echo "previous 3 completed runs not-success: $bad/3"
-          if ($bad -lt 3) { echo "ยังไม่ครบ 4 ครั้งติด — เงียบไว้ก่อน"; exit 0 }
-          $msg = "⚠️ **TBH price update ล้มเหลว 4 ครั้งติด**`nรันบน self-hosted runner nb-march (โน้ตบุ๊ก NB-MARCH) → ถ้าพังยาวมักเป็น: โน้ตบุ๊กปิด/runner offline / รหัส STEAM_USER/STEAM_PASS ผิด / บัญชีติด Steam Guard / Steam rate limit / build error`n🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`n👉 เช็ค runner: ${{ github.server_url }}/${{ github.repository }}/settings/actions/runners"
-          $body = [Text.Encoding]::UTF8.GetBytes((@{ content = $msg } | ConvertTo-Json))
-          Invoke-RestMethod -Method Post -ContentType 'application/json' -Body $body "${{ secrets.DISCORD_WEBHOOK }}" | Out-Null
+          if [ "${bad:-0}" -lt 3 ]; then echo "ยังไม่ครบ 4 ครั้งติด — เงียบไว้ก่อน"; exit 0; fi
+          jq -n --arg c "⚠️ **TBH price update ล้มเหลว 4 ครั้งติด** (GitHub-hosted)
+          สาเหตุที่พบบ่อย: Steam rate limit / เรตแปลง USD→THB ดึงไม่ได้ / build error
+          🔗 ดู log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            '{content:$c}' | curl -s -X POST -H 'Content-Type: application/json' -d @- "$WEBHOOK" > /dev/null
