@@ -31,17 +31,17 @@ jobs:
             "https://steamcommunity.com/market/search/render/?norender=1&appid=3678970&currency=14&sort_column=popular&sort_dir=desc&count=10&start=0" \
             -o /tmp/thb.json
           head -c 400 /tmp/thb.json; echo ""
-          # ต้องมีสัญลักษณ์ ฿ (฿) ใน sell_price_text
-          grep -q '\\u0e3f\|฿' /tmp/thb.json && echo "== ได้ THB ✓ ==" || { echo "== ไม่ได้ THB ✗ =="; exit 1; }
+          # แจ้งผลอย่างเดียว ไม่ fail ทั้ง run (ผลรอบแรก: anon จาก IP นอกไทยได้ $ เสมอ — Steam เลือกสกุลตาม IP)
+          grep -q '\\u0e3f\|฿' /tmp/thb.json && echo "== ได้ THB ✓ ==" || echo "== ไม่ได้ THB (ได้ USD ตาม IP) =="
           sleep 3
 
-      - name: "3) ยิงยาว 20 หน้า currency=14 delay 2s — จำลองโหลดจริง (~75 หน้า/รอบ)"
+      - name: "3) ยิงยาว 20 หน้า currency=1 delay 2s — จำลองโหลดจริง (~75 หน้า/รอบ)"
         run: |
           UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
           fail=0
           for i in $(seq 0 19); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -A "$UA" \
-              "https://steamcommunity.com/market/search/render/?norender=1&appid=3678970&currency=14&sort_column=popular&sort_dir=desc&count=10&start=$((i*10))")
+              "https://steamcommunity.com/market/search/render/?norender=1&appid=3678970&currency=1&sort_column=popular&sort_dir=desc&count=10&start=$((i*10))")
             printf '%s ' "$code"
             [ "$code" != "200" ] && fail=$((fail+1))
             sleep 2
