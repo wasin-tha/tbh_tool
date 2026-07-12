@@ -112,8 +112,18 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 ## สถาปัตยกรรม index.html
 Single HTML, ไม่มี framework, dark theme, gold `#e8c84a`
 **Responsive**: `@media(max-width:600px)` คุมมือถือ — แถบเมนู `.tab-nav` เลื่อนแนวนอน (overflow-x, ซ่อน scrollbar), grid→1col, ตารางกว้าง (Farm/Skills/Stage) ห่อด้วย `.farm-table-wrap`/overflow-x scroll, tooltip/dropdown clamp ในจอ. เทสด้วย Playwright viewport 360/390px (เช็ค scrollWidth ไม่เกิน innerWidth)
-**7 tabs** (ลำดับ): Material → Equipment → Crafting → Pet → **Farm** → Runes → Skills
+**8 tabs** (ลำดับ): Material → Equipment → Crafting → Pet → **Farm** → Runes → Skills → **Stash**
 (แท็บ "Stages" + "Stage Calculator" เดิม **ถูกยุบรวมเป็นแท็บ Farm** — ดูข้อ 5)
+
+### Stash tab ⭐ (อ่านไฟล์เซฟ → คำนวณมูลค่าไอเทม/ฮีโร่ — ถอดจาก tbhindex.com/stash)
+- **อ่าน save file ในเบราว์เซอร์ล้วน ๆ (ไม่อัปโหลด)** — ไฟล์ `SaveFile_Live.es3` (Easy Save 3) ที่ `%LocalLow%\TesseractStudio\TaskbarHero\`
+- **ถอดรหัส (JS WebCrypto)**: PBKDF2-SHA1 (password `emuMqG3bLYJ938ZDCfieWJ`, salt+IV = 16 ไบต์แรกของไฟล์, 100 iterations) → **AES-128-CBC** → ถ้าขึ้นต้น gzip magic (1f 8b) ก็ `DecompressionStream('gzip')` → JSON. `PlayerSaveData.value` เป็น JSON string → parse (ต้อง quote เลข ≥17 หลักก่อน ไม่งั้น JS ทำ precision หาย). WebCrypto ตัด PKCS7 padding ให้เอง (ไม่ต้อง strip)
+- **โครงสร้าง PSD**: `itemSaveDatas` (uniqueId→{ItemKey,EnchantData,...}), `stashSaveDatas`/`inventorySaveDatas`/`remakeTradingStashSaveDatas` (slot→ItemUniqueId), `heroSaveDatas` (heroKey,HeroLevel,IsUnLock,`equippedItemIds`[10]). ItemKey = id ใน items.json ตรงๆ (grade/type/gear/level/icon มาจาก catalog)
+- **slot order** ของ equippedItemIds: 0=อาวุธหลัก 1=อาวุธรอง 2=หมวก 3=เกราะ 4=ถุงมือ 5=รองเท้า 6=สร้อยคอ 7=ต่างหู 8=แหวน 9=สายรัดข้อมือ
+- **valuation** (ตรงกับ tbhindex): **net worth** = Σ ราคาฐาน (`priceNum(id)`) ของ stash+inventory+trade ship ทุก slot (material stack แต่ละชิ้น = 1 slot, จัดกลุ่มแค่ตอนแสดง qty); **gear value ต่อชิ้น** = ราคาฐาน + Σ ราคา `EnchantData[].MaterialKey` (วัสดุที่ใส่). ⚠️ ItemKey ลงท้าย `900` = chaotic → strip 3 ตัวท้ายก่อนหาราคา
+- **★ เราแม่นกว่า tbhindex**: เขาใช้ราคา USD × FX (overstate); เราใช้ prices.json = **ราคา Steam ฿ ไทยจริง** (regional). Steam login ของ tbhindex ใช้แค่ ranking/gamify — **ไม่เกี่ยวกับ net worth** (คำนวณจากไฟล์ล้วน). กราฟราคา history ของเขา = เก็บเองใน backend (ไม่ใช่ดึงสด Steam) — **เราข้ามไว้ก่อน** (ผู้ใช้เลือก)
+- **UI**: drag/drop หรือเลือกไฟล์ → cache base64 ใน `localStorage['tbh_save_b64']` (reload อ่านคืนเอง) → sub-tabs All/Stash/Inventory/Trade Ship/Heroes + filter grade(multi)/type/tradable + search + sort + panel รายละเอียด (วัสดุที่ใส่ + Steam link) + หน้า Heroes (การ์ด slot อุปกรณ์ + gear value ต่อฮีโร่)
+- **โค้ด**: build `STASH_CAT_JSON` (id→[name_en,name_th,grade,type,gear,level,icon,marketable]) + `STASH_TAB` (HTML+CSS ในตัว, prefix `.st-`) + `JS_STASH` (inject ผ่าน marker `// ── STASH_INJECT ──` ก่อน `</script>`). ใช้ `PRICES`/`priceNum`/`HEROES_DATA`/`GRADE_TH`/`GEARTYPE_TH`/`CLASS_TH` ที่มีอยู่. `stashOnPrices()` ถูกเรียกใน `fillPrices()` (คำนวณใหม่เมื่อราคาโหลด/อัปเดต), re-render เมื่อสลับภาษาผ่าน `applyLangToSelects()` (ข้อความ stash เป็น JS ไม่ใช่ dual-span; placeholder/option ตั้ง plain text ต่อภาษาด้วย `stApplyLangText()`)
 
 ### gen_tbh.py — gotcha
 - HTML ประกอบจาก string ต่อกัน เพื่อเลี่ยง f-string ชนกับ `{}` ใน JS/CSS

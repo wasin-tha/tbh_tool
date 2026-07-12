@@ -1694,6 +1694,10 @@ TOPBAR = """
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
       Skills
     </button>
+    <button class="tab-btn tab-btn-stash" data-tab="stash" onclick="switchTab(this)">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7h-4V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v3H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M12 11v4M9 13h6"/></svg>
+      """ + gb('Stash','กระเป๋า') + """
+    </button>
   </div>
   <div class="lang-toggle" id="lang-toggle" onclick="toggleLang()" style="margin-left:12px" title="สลับภาษา / Switch language">
     <span class="lang-knob"></span>
@@ -2077,6 +2081,8 @@ function toggleLang() {
 function applyLangToSelects() {
   // farm stage dropdowns แสดงชื่อด่านตามภาษา → rerender เมื่อสลับภาษา (ถ้า init แล้ว)
   if (window.STAGE_MAP && document.getElementById('farm-samples')) renderFarmSamples();
+  // stash ใช้ข้อความจาก JS (ไม่ใช่ dual-span) → re-render ตามภาษาใหม่
+  if (typeof ST_STATE !== 'undefined' && ST_STATE) { stRenderAll(); if (document.getElementById('st-detail').classList.contains('show')) stCloseDetail(); }
 }
 function jbi(o) {
   if (o == null) return '';
@@ -2157,6 +2163,7 @@ function fillPrices() {
   document.querySelectorAll('.price-date').forEach(el => { el.textContent = dt ? ('ราคา • อัพเดท ' + dt) : ''; });
   // gear: เติมราคาในที่ผ่าน .price-row[data-pid] ด้านบนแล้ว (ไม่ต้อง re-render การ์ด 1960 ใบ)
   if (document.querySelector('#craft-grid .craft-card') && typeof renderCraft==='function') renderCraft();
+  if (typeof stashOnPrices==='function') stashOnPrices();
 }
 // ดึง prices.json — อัปเฉพาะเมื่อ _at เปลี่ยน (ไม่งั้นไม่แตะ DOM)
 function loadPrices(announce) {
@@ -3869,9 +3876,208 @@ switchTab = function(btn) {
     applyGearFilter();
   }
 };
+// ── STASH_INJECT ──
 </script>
 </body>
 </html>"""
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STASH — read Easy Save 3 (.es3) save file in-browser, value inventory & heroes
+# (ถอดจาก tbhindex.com/stash: ES3 = PBKDF2-SHA1/AES-128-CBC + gzip; valuation
+#  ตรงกับของเขาแต่ใช้ราคา Steam ฿ ไทยจริงของเรา ซึ่งแม่นกว่า USD×FX ของเขา)
+# ══════════════════════════════════════════════════════════════════════════════
+# item catalog for the JS: id -> [name_en, name_th, grade, type, gear_type, level, icon_path, marketable]
+_stash_cat = {}
+for _it in items_list:
+    if _it.get('deleted'):
+        continue
+    _nm = biobj(_it.get('name'))
+    _stash_cat[_it['id']] = [
+        _nm['e'], _nm['t'], _it.get('grade') or '', _it.get('type') or '',
+        _it.get('gear') or '', _it.get('level') or 0,
+        _it.get('icon') or '', 1 if _it.get('marketable') else 0,
+    ]
+STASH_CAT_JSON = json.dumps(_stash_cat, ensure_ascii=False, separators=(',', ':'))
+STASH_META_JSON = json.dumps({
+    'gradeOrder': GRADE_ORDER,
+    'gradeColors': GRADE_COLORS,
+    'wikiBase': WIKI_BASE,
+    'appId': APP_ID,
+}, ensure_ascii=False, separators=(',', ':'))
+
+STASH_TAB = """
+<div id="tab-stash" class="tab-pane">
+<div class="st-wrap">
+  <h1 class="page-title">""" + gb('Stash Value', 'มูลค่ากระเป๋า') + """</h1>
+  <p class="page-sub">""" + gb('Load your save file to price every item, hero & net worth — read 100% in your browser, nothing is uploaded.',
+                                'โหลดไฟล์เซฟเพื่อคำนวณราคาไอเทม ฮีโร่ และมูลค่ารวม — อ่านในเบราว์เซอร์ล้วน ๆ ไม่ส่งไฟล์ขึ้นเซิร์ฟเวอร์') + """</p>
+
+  <!-- ===== empty / upload state ===== -->
+  <div id="st-empty" class="st-empty">
+    <div class="st-drop" id="st-drop">
+      <svg width="46" height="46" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="st-drop-title">""" + gb('Drop your SaveFile_Live.es3 here', 'ลากไฟล์ SaveFile_Live.es3 มาวางที่นี่') + """</div>
+      <div class="st-drop-sub">""" + gb('or click to choose', 'หรือคลิกเพื่อเลือกไฟล์') + """</div>
+      <input type="file" id="st-file" accept=".es3,.bak" style="display:none">
+    </div>
+    <div class="st-hint">
+      <b>""" + gb('Where is my save?', 'ไฟล์เซฟอยู่ที่ไหน?') + """</b>
+      <code>%USERPROFILE%\\AppData\\LocalLow\\TesseractStudio\\TaskbarHero\\SaveFile_Live.es3</code>
+      <span class="st-hint-note">""" + gb('Close the game first so the file is the latest. Your data stays on your device.',
+                                            'ปิดเกมก่อนเพื่อให้ไฟล์เป็นล่าสุด ข้อมูลอยู่บนเครื่องคุณเท่านั้น') + """</span>
+    </div>
+    <div id="st-error" class="st-error" style="display:none"></div>
+  </div>
+
+  <!-- ===== loaded state ===== -->
+  <div id="st-main" style="display:none">
+    <div class="st-topbar">
+      <div class="st-networth">
+        <div class="st-nw-label">""" + gb('NET WORTH', 'มูลค่ารวม') + """</div>
+        <div class="st-nw-val" id="st-nw">฿0.00</div>
+        <div class="st-nw-sub" id="st-nw-sub"></div>
+      </div>
+      <div class="st-topmeta">
+        <div class="st-gold" id="st-gold"></div>
+        <div class="st-actions">
+          <button class="st-btn" id="st-reload">""" + gb('↻ Reload', '↻ โหลดใหม่') + """</button>
+          <button class="st-btn st-btn-ghost" id="st-clear">""" + gb('✕ Clear', '✕ ล้าง') + """</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-subtabs" id="st-subtabs"></div>
+
+    <!-- item views -->
+    <div id="st-itemview">
+      <div class="st-controls">
+        <div class="search-row st-search">
+          <span class="search-icon"><svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+          <input class="search-input" id="st-search" type="search" data-ph-en="Search item..." data-ph-th="ค้นหาไอเทม..." placeholder="ค้นหาไอเทม..." autocomplete="off">
+        </div>
+        <div class="st-filter-row" id="st-type-filter"></div>
+        <div class="st-filter-row" id="st-grade-filter"></div>
+        <div class="st-filter-row st-opts">
+          <label class="st-check"><input type="checkbox" id="st-tradable"> """ + gb('Tradable only', 'ขายได้เท่านั้น') + """</label>
+          <div class="st-sort">
+            <span class="filter-label">""" + gb('Sort', 'เรียง') + """</span>
+            <select id="st-sort" class="st-select">
+              <option value="value" data-en="Total value" data-th="มูลค่ารวม">มูลค่ารวม</option>
+              <option value="unit" data-en="Unit price" data-th="ราคาต่อชิ้น">ราคาต่อชิ้น</option>
+              <option value="qty" data-en="Quantity" data-th="จำนวน">จำนวน</option>
+              <option value="grade" data-en="Grade" data-th="เกรด">เกรด</option>
+              <option value="name" data-en="Name" data-th="ชื่อ">ชื่อ</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="st-grid" id="st-grid"></div>
+      <div class="st-empty-msg" id="st-grid-empty" style="display:none"></div>
+    </div>
+
+    <!-- heroes view -->
+    <div id="st-heroview" style="display:none">
+      <div class="st-hero-total" id="st-hero-total"></div>
+      <div class="st-hero-grid" id="st-hero-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- item detail panel -->
+<div id="st-detail" class="st-detail"><div class="st-detail-inner" id="st-detail-inner"></div></div>
+<div id="st-detail-bg" class="st-detail-bg"></div>
+</div>
+
+<style>
+.st-wrap{max-width:1180px;margin:0 auto;padding:0 4px}
+.st-empty{max-width:560px;margin:32px auto}
+.st-drop{border:2px dashed var(--border,#3a3f52);border-radius:16px;padding:40px 20px;text-align:center;cursor:pointer;color:var(--muted,#8b94a7);transition:.15s;background:rgba(255,255,255,.015)}
+.st-drop:hover,.st-drop.drag{border-color:#e8c84a;color:#e8c84a;background:rgba(232,200,74,.06)}
+.st-drop-title{font-weight:700;font-size:16px;margin-top:12px;color:var(--fg,#e8ebf2)}
+.st-drop-sub{font-size:13px;margin-top:4px}
+.st-hint{margin-top:18px;font-size:13px;color:var(--muted,#8b94a7);line-height:1.7}
+.st-hint code{display:block;margin:6px 0;padding:8px 10px;background:rgba(0,0,0,.3);border-radius:7px;font-size:11.5px;word-break:break-all;color:#c8cad6}
+.st-hint-note{font-size:12px;opacity:.8}
+.st-error{margin-top:16px;padding:12px 14px;border-radius:10px;background:rgba(252,36,36,.12);border:1px solid rgba(252,36,36,.4);color:#ff9b9b;font-size:13px}
+.st-topbar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(232,200,74,.09),rgba(232,200,74,.02));border:1px solid rgba(232,200,74,.22);border-radius:14px;padding:16px 20px;margin-bottom:16px}
+.st-nw-label{font-size:11px;letter-spacing:1.5px;color:var(--muted,#8b94a7);font-weight:700}
+.st-nw-val{font-size:34px;font-weight:800;color:#e8c84a;line-height:1.05;font-variant-numeric:tabular-nums}
+.st-nw-sub{font-size:12px;color:var(--muted,#8b94a7);margin-top:2px}
+.st-topmeta{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.st-gold{font-size:13px;color:#f4d774;font-weight:600}
+.st-actions{display:flex;gap:8px}
+.st-btn{background:rgba(255,255,255,.06);border:1px solid var(--border,#3a3f52);color:var(--fg,#e8ebf2);border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.st-btn:hover{border-color:#e8c84a;color:#e8c84a}
+.st-btn-ghost{opacity:.75}
+.st-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;overflow-x:auto}
+.st-subtab{background:transparent;border:1px solid var(--border,#3a3f52);color:var(--muted,#8b94a7);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;display:flex;gap:6px;align-items:center}
+.st-subtab .st-count{font-size:11px;opacity:.7}
+.st-subtab.active{background:rgba(232,200,74,.14);border-color:#e8c84a;color:#e8c84a}
+.st-controls{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.st-search{max-width:340px}
+.st-filter-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.st-opts{justify-content:space-between}
+.st-check{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted,#8b94a7);cursor:pointer}
+.st-sort{display:flex;align-items:center;gap:6px}
+.st-select{background:var(--card,#20242f);border:1px solid var(--border,#3a3f52);color:var(--fg,#e8ebf2);border-radius:7px;padding:5px 8px;font-size:12.5px;font-family:inherit}
+.st-pill{background:transparent;border:1px solid var(--border,#3a3f52);color:var(--muted,#8b94a7);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.st-pill.active{background:rgba(232,200,74,.14);border-color:#e8c84a;color:#e8c84a}
+.st-pill.g-active{color:#fff}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:8px}
+.st-tile{position:relative;aspect-ratio:1;border-radius:10px;border:1.5px solid var(--border,#3a3f52);background:var(--card,#20242f);cursor:pointer;overflow:hidden;transition:.12s}
+.st-tile:hover{transform:translateY(-2px);border-color:#e8c84a}
+.st-tile img{width:100%;height:100%;object-fit:contain;padding:6px;image-rendering:pixelated}
+.st-tile-price{position:absolute;left:0;top:0;font-size:10.5px;font-weight:700;color:#e8c84a;background:rgba(0,0,0,.72);padding:1px 5px;border-bottom-right-radius:7px}
+.st-tile-qty{position:absolute;right:2px;bottom:2px;font-size:10.5px;font-weight:700;color:#fff;background:rgba(0,0,0,.72);padding:0 5px;border-radius:6px}
+.st-tile-lv{position:absolute;left:2px;bottom:2px;font-size:9.5px;font-weight:700;color:#cfd3df;background:rgba(0,0,0,.6);padding:0 4px;border-radius:5px}
+.st-empty-msg{text-align:center;color:var(--muted,#8b94a7);padding:40px;font-size:14px}
+/* heroes */
+.st-hero-total{font-size:14px;font-weight:600;color:var(--muted,#8b94a7);margin-bottom:12px;text-align:right}
+.st-hero-total b{color:#e8c84a;font-size:17px}
+.st-hero-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.st-hero-card{border:1px solid var(--border,#3a3f52);border-radius:14px;overflow:hidden;background:var(--card,#20242f)}
+.st-hero-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border,#3a3f52)}
+.st-hero-name{font-weight:800;font-size:16px}
+.st-hero-lv{font-size:11.5px;color:var(--muted,#8b94a7)}
+.st-hero-gv-l{font-size:10px;letter-spacing:1px;color:var(--muted,#8b94a7);text-align:right}
+.st-hero-gv{font-weight:800;font-size:17px;color:#e8c84a}
+.st-hero-body{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;padding:14px 16px;align-items:center}
+.st-slotcol{display:flex;flex-direction:column;gap:8px}
+.st-hero-portrait{width:88px;height:88px;object-fit:contain;image-rendering:pixelated;justify-self:center}
+.st-slot{position:relative}
+.st-slot-lbl{font-size:8.5px;letter-spacing:.3px;color:var(--muted,#8b94a7);font-weight:700;margin-bottom:2px}
+.st-slot-box{position:relative;aspect-ratio:1;width:100%;max-width:56px;border-radius:8px;border:1.5px solid var(--border,#3a3f52);background:rgba(0,0,0,.2);cursor:pointer;overflow:hidden}
+.st-slot-box.empty{cursor:default;opacity:.5}
+.st-slot-box img{width:100%;height:100%;object-fit:contain;padding:3px;image-rendering:pixelated}
+.st-slot-price{position:absolute;left:0;top:0;font-size:9px;font-weight:700;color:#5fd88a;background:rgba(0,0,0,.75);padding:0 3px;border-bottom-right-radius:5px}
+.st-slot-lv2{position:absolute;right:1px;bottom:1px;font-size:8px;font-weight:700;color:#cfd3df;background:rgba(0,0,0,.6);padding:0 3px;border-radius:4px}
+/* detail panel */
+.st-detail-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.15s;z-index:59}
+.st-detail-bg.show{opacity:1;pointer-events:auto}
+.st-detail{position:fixed;top:0;right:0;height:100%;width:340px;max-width:90vw;background:var(--card,#20242f);border-left:1px solid var(--border,#3a3f52);transform:translateX(100%);transition:.2s;z-index:60;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.4)}
+.st-detail.show{transform:translateX(0)}
+.st-detail-inner{padding:20px}
+.st-d-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted,#8b94a7);font-size:22px;cursor:pointer;line-height:1}
+.st-d-icon{width:96px;height:96px;object-fit:contain;image-rendering:pixelated;display:block;margin:6px auto 12px;border-radius:12px}
+.st-d-name{font-size:18px;font-weight:800;text-align:center}
+.st-d-badges{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0 16px}
+.st-d-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;border:1px solid currentColor}
+.st-d-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border,#2c3140);font-size:13px}
+.st-d-row .l{color:var(--muted,#8b94a7)}
+.st-d-row .v{font-weight:700}
+.st-d-steam{display:block;text-align:center;margin-top:16px;padding:9px;border-radius:9px;background:#1b2838;border:1px solid #2a475e;color:#c6d4df;font-size:13px;font-weight:600;text-decoration:none}
+.st-d-steam:hover{border-color:#66c0f4;color:#fff}
+.st-d-ench{margin-top:14px}
+.st-d-ench-h{font-size:11px;letter-spacing:1px;color:var(--muted,#8b94a7);font-weight:700;margin-bottom:6px}
+.st-d-ench-item{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0}
+@media(max-width:600px){
+  .st-detail{width:100%;max-width:100%;top:auto;bottom:0;height:auto;max-height:80vh;border-left:none;border-top:1px solid var(--border,#3a3f52);border-radius:16px 16px 0 0;transform:translateY(100%)}
+  .st-detail.show{transform:translateY(0)}
+  .st-nw-val{font-size:28px}
+  .st-hero-grid{grid-template-columns:1fr}
+}
+</style>"""
+
 
 # ── Inject GEAR_DATA into JS (must be after JS raw string is defined) ─────────
 JS_WITH_GEAR = JS.replace(
@@ -3894,6 +4100,376 @@ JS_WITH_GEAR = JS.replace(
     f'const PET_TH={PET_TH_JSON};\nconst MONSTER_TH={MONSTER_TH_JSON};\nconst STAGE_NAME_TH={STAGE_NAME_TH_JSON};\nconst GRADE_TH={GRADE_TH_JSON};\nconst GEARTYPE_TH={GEARTYPE_TH_JSON};\nconst GEARTYPE_ICON={GEARTYPE_ICON_JSON};\nconst CLASS_TH={CLASS_TH_JSON};\n// ── Pet data ──'
 )
 
+# ── Stash JS (ES3 decrypt + parse + valuation + render) ──────────────────────
+JS_STASH = r"""
+// ════════════ STASH: save-file valuation (client-side, nothing uploaded) ════════════
+const ITEM_CAT = __STASH_CAT__;      // id -> [name_en, name_th, grade, type, gearType, level, icon, marketable]
+const STASH_META = __STASH_META__;
+const ST_PW = 'emuMqG3bLYJ938ZDCfieWJ';
+const ST_SLOT_LABELS = [
+  {e:'MAIN WPN',t:'อาวุธหลัก'},{e:'SUB WPN',t:'อาวุธรอง'},{e:'HELM',t:'หมวก'},{e:'ARMOR',t:'เกราะ'},
+  {e:'GLOVES',t:'ถุงมือ'},{e:'BOOTS',t:'รองเท้า'},{e:'NECKLACE',t:'สร้อยคอ'},{e:'EARRING',t:'ต่างหู'},
+  {e:'RING',t:'แหวน'},{e:'BRACER',t:'สายรัดข้อมือ'}
+];
+const ST_GRADE_IDX = {}; STASH_META.gradeOrder.forEach((g,i)=>ST_GRADE_IDX[g]=i);
+let ST_STATE = null;              // parsed save
+let ST_VIEW = 'all';              // all|stash|inventory|trading|heroes
+let ST_GRADES = new Set();        // active grade filter (empty = all)
+let ST_TYPE = '';                 // ''|MATERIAL|EQUIPMENT|ACCESSORY
+let ST_SEARCH = '';
+let ST_TRADABLE = false;
+let ST_SORT = 'value';
+
+function stBi(o){ return document.body.classList.contains('lang-th') ? o.t : o.e; }
+function stFmt(n){ return '฿' + Number(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function stIcon(path){ return path ? (STASH_META.wikiBase + path) : ''; }
+function stCat(id){ return ITEM_CAT[String(id)] || null; }
+const ST_ACCESSORY = new Set(['AMULET','EARING','RING','BRACER']);
+
+// ---- ES3 decrypt: PBKDF2-SHA1(100) -> AES-128-CBC -> gunzip -> JSON (bigints quoted) ----
+async function stDecrypt(buf){
+  const data = new Uint8Array(buf);
+  if (data.length <= 16) throw new Error('bad');
+  const salt = data.slice(0,16), ct = data.slice(16);
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(ST_PW), {name:'PBKDF2'}, false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:100, hash:'SHA-1'}, base, {name:'AES-CBC', length:128}, false, ['decrypt']);
+  let pt = new Uint8Array(await crypto.subtle.decrypt({name:'AES-CBC', iv:salt}, key, ct));
+  if (pt[0]===31 && pt[1]===139)
+    pt = new Uint8Array(await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+  const root = JSON.parse(new TextDecoder().decode(pt));
+  const raw = root.PlayerSaveData && root.PlayerSaveData.value;
+  if (!raw) throw new Error('no PlayerSaveData');
+  const fixed = String(raw).replace(/:\s*(\d{17,})/g, ':"$1"').replace(/([,\[])\s*(\d{17,})/g, '$1"$2"');
+  return JSON.parse(fixed);
+}
+
+// ---- parse PSD into locations + heroes ----
+function stMkItem(it, loc){
+  const ik = String(it.ItemKey);
+  const lookup = ik.length > 3 && ik.endsWith('900') ? ik.slice(0,-3) : ik;
+  const cat = stCat(lookup) || stCat(ik);
+  return { itemKey:ik, lookup, uid:String(it.UniqueId), cat, loc,
+           enchant: (it.EnchantData||[]).filter(e=>e && e.MaterialKey),
+           deco: it.DecorationAppliedTotalCount||0, engr: it.EngravingAppliedTotalCount||0, insc: it.InscriptionAppliedTotalCount||0 };
+}
+function stParse(psd){
+  const byuid = {};
+  for (const it of (psd.itemSaveDatas||[])) byuid[String(it.UniqueId)] = it;
+  const loc = (arr, name) => {
+    const out = [];
+    for (const s of (arr||[])) {
+      const uid = s.ItemUniqueId;
+      if (!uid || String(uid)==='0') continue;
+      const it = byuid[String(uid)];
+      if (it) out.push(stMkItem(it, name));
+    }
+    return out;
+  };
+  const stash = loc(psd.stashSaveDatas, 'stash');
+  const inventory = loc(psd.inventorySaveDatas, 'inventory');
+  const trading = loc(psd.remakeTradingStashSaveDatas || psd.tradingStashSaveDatas, 'trading');
+  const heroes = [];
+  for (const h of (psd.heroSaveDatas||[])) {
+    if (!h.IsUnLock) continue;
+    const slots = (h.equippedItemIds||[]).map(uid => {
+      if (!uid || String(uid)==='0') return null;
+      const it = byuid[String(uid)];
+      return it ? stMkItem(it, 'equipped') : null;
+    });
+    heroes.push({ key: h.heroKey, level: h.HeroLevel, slots });
+  }
+  const goldRow = (psd.currenySaveDatas||[]).find(c => c.Key === 100001);
+  return { stash, inventory, trading, heroes, gold: goldRow ? goldRow.Quantity : 0, ownerSteamId: psd._ownerSteamId||null };
+}
+
+// ---- valuation ----
+function stUnit(it){ return it.cat ? priceNum(it.lookup) : 0; }              // base market price
+function stEnchVal(it){ let v=0; for (const e of it.enchant) v += priceNum(e.MaterialKey); return v; }
+function stGearVal(it){ return stUnit(it) + stEnchVal(it); }
+function stNetWorth(){ let v=0; for (const arr of [ST_STATE.stash, ST_STATE.inventory, ST_STATE.trading]) for (const it of arr) v += stUnit(it); return v; }
+function stHeroVal(h){ let v=0; for (const it of h.slots) if (it) v += stGearVal(it); return v; }
+
+// ---- file handling ----
+function stShowError(msg){
+  const el = document.getElementById('st-error');
+  el.style.display = 'block';
+  el.textContent = (document.body.classList.contains('lang-th') ? 'อ่านไฟล์ไม่สำเร็จ: ' : 'Could not read file: ') + msg;
+}
+async function stHandleFile(file){
+  document.getElementById('st-error').style.display = 'none';
+  try {
+    const buf = await file.arrayBuffer();
+    const psd = await stDecrypt(buf);
+    // cache base64 for reload
+    let bin=''; const bytes=new Uint8Array(buf); const CH=0x8000;
+    for (let i=0;i<bytes.length;i+=CH) bin += String.fromCharCode.apply(null, bytes.subarray(i,i+CH));
+    try { localStorage.setItem('tbh_save_b64', btoa(bin)); } catch(e){}
+    ST_STATE = stParse(psd);
+    stRenderAll();
+  } catch(e){
+    stShowError((e && e.message) || String(e));
+  }
+}
+async function stLoadCached(){
+  let b64=null; try { b64 = localStorage.getItem('tbh_save_b64'); } catch(e){}
+  if (!b64) return false;
+  try {
+    const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    ST_STATE = stParse(await stDecrypt(bytes.buffer));
+    stRenderAll();
+    return true;
+  } catch(e){ try{localStorage.removeItem('tbh_save_b64');}catch(_){} return false; }
+}
+function stClear(){
+  try{ localStorage.removeItem('tbh_save_b64'); }catch(e){}
+  ST_STATE = null;
+  document.getElementById('st-main').style.display='none';
+  document.getElementById('st-empty').style.display='block';
+}
+
+// ---- rendering ----
+function stCurrentItems(){
+  if (ST_VIEW==='all') return [...ST_STATE.stash, ...ST_STATE.inventory, ...ST_STATE.trading];
+  if (ST_VIEW==='stash') return ST_STATE.stash;
+  if (ST_VIEW==='inventory') return ST_STATE.inventory;
+  if (ST_VIEW==='trading') return ST_STATE.trading;
+  return [];
+}
+function stGroup(items){
+  // group identical items by name+grade (materials by name); qty = count of slots
+  const map = new Map();
+  for (const it of items){
+    if (!it.cat) continue;
+    const key = it.cat[3]==='MATERIAL' ? ('m:'+it.lookup) : ('g:'+it.cat[0]+'|'+it.cat[2]);
+    let g = map.get(key);
+    if (!g) { g = { rep: it, qty: 0, unit: stUnit(it) }; map.set(key, g); }
+    g.qty++;
+  }
+  return [...map.values()];
+}
+function stMatchFilter(it){
+  const c = it.cat; if (!c) return false;
+  if (ST_TRADABLE && !c[7]) return false;
+  if (ST_GRADES.size && !ST_GRADES.has(c[2])) return false;
+  if (ST_TYPE){
+    const isAcc = c[3]==='GEAR' && ST_ACCESSORY.has(c[4]);
+    if (ST_TYPE==='MATERIAL' && c[3]!=='MATERIAL') return false;
+    if (ST_TYPE==='ACCESSORY' && !isAcc) return false;
+    if (ST_TYPE==='EQUIPMENT' && !(c[3]==='GEAR' && !isAcc)) return false;
+  }
+  if (ST_SEARCH){ const q=ST_SEARCH; if (!(c[0].toLowerCase().includes(q) || (c[1]||'').toLowerCase().includes(q))) return false; }
+  return true;
+}
+function stRenderGrid(){
+  const groups = stGroup(stCurrentItems().filter(stMatchFilter));
+  for (const g of groups){ g.unit = stUnit(g.rep); g.total = g.unit * g.qty; }
+  const s = ST_SORT;
+  groups.sort((a,b)=>{
+    if (s==='name') return a.rep.cat[0].localeCompare(b.rep.cat[0]);
+    if (s==='grade') return (ST_GRADE_IDX[b.rep.cat[2]]||0)-(ST_GRADE_IDX[a.rep.cat[2]]||0) || b.total-a.total;
+    if (s==='qty') return b.qty-a.qty;
+    if (s==='unit') return b.unit-a.unit;
+    return b.total-a.total;   // value
+  });
+  const grid = document.getElementById('st-grid');
+  const emptyMsg = document.getElementById('st-grid-empty');
+  if (!groups.length){
+    grid.innerHTML=''; emptyMsg.style.display='block';
+    emptyMsg.textContent = document.body.classList.contains('lang-th') ? 'ไม่มีไอเทมตรงเงื่อนไข' : 'No items match';
+    return;
+  }
+  emptyMsg.style.display='none';
+  grid.innerHTML = groups.map((g,i)=>{
+    const c=g.rep.cat, col=STASH_META.gradeColors[c[2]]||'#3a3f52';
+    const price = g.unit>0 ? stFmt(g.unit) : '–';
+    const qty = g.qty>1 ? `<span class="st-tile-qty">${g.qty}</span>` : '';
+    const lv = (c[3]==='GEAR' && c[5]) ? `<span class="st-tile-lv">${c[5]}</span>` : '';
+    const img = c[6] ? `<img src="${esc(stIcon(c[6]))}" loading="lazy" onerror="this.style.display='none'">` : '';
+    return `<div class="st-tile" style="border-color:${col}55" data-gi="${i}" onclick="stShowDetailG(${i})">
+      ${img}<span class="st-tile-price">${price}</span>${qty}${lv}</div>`;
+  }).join('');
+  ST_LAST_GROUPS = groups;
+}
+let ST_LAST_GROUPS = [];
+function stShowDetailG(i){ stShowDetail(ST_LAST_GROUPS[i].rep, ST_LAST_GROUPS[i].qty); }
+
+function stShowDetail(it, qty){
+  const c = it.cat; if (!c) return;
+  const col = STASH_META.gradeColors[c[2]]||'#8b94a7';
+  const grTh = (typeof GRADE_TH!=='undefined' && GRADE_TH[c[2]]) || c[2];
+  const gtTh = (typeof GEARTYPE_TH!=='undefined' && GEARTYPE_TH[c[4]]) || c[4];
+  const gradeTxt = document.body.classList.contains('lang-th') ? grTh : (c[2]||'');
+  const unit = stUnit(it), ench = stEnchVal(it);
+  const hashName = c[3]==='MATERIAL' ? c[0] : `${c[0]} (${c[2].charAt(0)+c[2].slice(1).toLowerCase()}) A`;
+  const steamUrl = c[7] ? `https://steamcommunity.com/market/listings/${STASH_META.appId}/${encodeURIComponent(hashName)}` : '';
+  const L = document.body.classList.contains('lang-th');
+  let rows = '';
+  rows += stRow(L?'ราคาต่อชิ้น':'Unit price', unit>0?stFmt(unit):(L?'ไม่มีราคา':'No price'));
+  if (qty && qty>1) rows += stRow(L?'จำนวน':'Quantity', '×'+qty) + stRow(L?'มูลค่ารวม':'Total value', stFmt(unit*qty));
+  if (c[3]==='GEAR'){
+    if (c[4]) rows += stRow(L?'ประเภท':'Type', L?gtTh:c[4]);
+    if (c[5]) rows += stRow('Level', c[5]);
+    if (ench>0) rows += stRow(L?'มูลค่าเอนแชนต์':'Enchant materials', '+'+stFmt(ench));
+    if (ench>0) rows += stRow(L?'มูลค่ารวมของชิ้น':'Full gear value', stFmt(unit+ench));
+  }
+  let enchHtml='';
+  if (it.enchant.length){
+    enchHtml = `<div class="st-d-ench"><div class="st-d-ench-h">${L?'วัสดุที่ใส่':'INVESTED MATERIALS'}</div>` +
+      it.enchant.map(e=>{ const m=stCat(e.MaterialKey); const nm=m?stBi({e:m[0],t:m[1]}):('#'+e.MaterialKey); const p=priceNum(e.MaterialKey);
+        return `<div class="st-d-ench-item"><span>${esc(nm)}</span><span style="color:#e8c84a">${p>0?stFmt(p):'–'}</span></div>`; }).join('') +
+      `</div>`;
+  }
+  document.getElementById('st-detail-inner').innerHTML =
+    `<button class="st-d-close" onclick="stCloseDetail()">×</button>` +
+    (c[6]?`<img class="st-d-icon" src="${esc(stIcon(c[6]))}" style="border:2px solid ${col}55" onerror="this.style.display='none'">`:'') +
+    `<div class="st-d-name">${esc(stBi({e:c[0],t:c[1]}))}</div>` +
+    `<div class="st-d-badges"><span class="st-d-badge" style="color:${col}">${esc(gradeTxt)}</span></div>` +
+    rows + enchHtml +
+    (steamUrl?`<a class="st-d-steam" href="${esc(steamUrl)}" target="_blank" rel="noopener">${L?'ดูบน Steam Market →':'View on Steam Market →'}</a>`:'');
+  document.getElementById('st-detail').classList.add('show');
+  document.getElementById('st-detail-bg').classList.add('show');
+}
+function stRow(l,v){ return `<div class="st-d-row"><span class="l">${esc(l)}</span><span class="v">${esc(String(v))}</span></div>`; }
+function stCloseDetail(){ document.getElementById('st-detail').classList.remove('show'); document.getElementById('st-detail-bg').classList.remove('show'); }
+
+function stRenderHeroes(){
+  const HD = (typeof HEROES_DATA!=='undefined') ? HEROES_DATA : [];
+  const hmap = {}; for (const h of HD) hmap[h.key] = h;
+  let total = 0;
+  const heroes = ST_STATE.heroes.map(h=>({ h, val: stHeroVal(h) })).sort((a,b)=>b.val-a.val);
+  for (const x of heroes) total += x.val;
+  document.getElementById('st-hero-total').innerHTML =
+    (document.body.classList.contains('lang-th')?'มูลค่าอุปกรณ์รวม ':'Total gear value ') + `<b>${stFmt(total)}</b>`;
+  const L = document.body.classList.contains('lang-th');
+  document.getElementById('st-hero-grid').innerHTML = heroes.map(({h,val})=>{
+    const hd = hmap[h.key] || {};
+    const cls = hd.class || ('Hero '+h.key);
+    const clsName = L ? ((typeof CLASS_TH!=='undefined' && CLASS_TH[cls]) || cls) : cls;
+    const color = hd.color || '#8b94a7';
+    const slot = (idx)=>{
+      const it = h.slots[idx], lbl = stBi(ST_SLOT_LABELS[idx]);
+      if (!it || !it.cat) return `<div class="st-slot"><div class="st-slot-lbl">${esc(lbl)}</div><div class="st-slot-box empty"></div></div>`;
+      const c=it.cat, v=stGearVal(it), col=STASH_META.gradeColors[c[2]]||'#3a3f52';
+      const img = c[6]?`<img src="${esc(stIcon(c[6]))}" onerror="this.style.display='none'">`:'';
+      const pr = v>0?`<span class="st-slot-price">${stFmt(v)}</span>`:'';
+      const lv = c[5]?`<span class="st-slot-lv2">${c[5]}</span>`:'';
+      return `<div class="st-slot"><div class="st-slot-lbl">${esc(lbl)}</div>
+        <div class="st-slot-box" style="border-color:${col}66" onclick="stShowHeroSlot(${h.key},${idx})">${img}${pr}${lv}</div></div>`;
+    };
+    const left = [2,3,4,5].map(slot).join('');    // helm armor gloves boots
+    const right = [6,7,8,9].map(slot).join('');   // necklace earring ring bracer
+    const weap = [0,1].map(slot).join('');        // main sub
+    const portrait = hd.icon ? `<img class="st-hero-portrait" src="${esc(hd.icon)}" onerror="this.style.display='none'">` : '<div class="st-hero-portrait"></div>';
+    return `<div class="st-hero-card">
+      <div class="st-hero-head" style="border-bottom-color:${color}44">
+        <div><div class="st-hero-name" style="color:${color}">${esc(clsName)}</div><div class="st-hero-lv">Lv.${h.level}</div></div>
+        <div><div class="st-hero-gv-l">${L?'มูลค่าอุปกรณ์':'GEAR VALUE'}</div><div class="st-hero-gv">${stFmt(val)}</div></div>
+      </div>
+      <div class="st-hero-body">
+        <div class="st-slotcol">${weap}${left}</div>
+        ${portrait}
+        <div class="st-slotcol">${right}</div>
+      </div></div>`;
+  }).join('');
+}
+function stShowHeroSlot(hkey, idx){
+  const h = ST_STATE.heroes.find(x=>x.key===hkey); if (!h) return;
+  const it = h.slots[idx]; if (it && it.cat) stShowDetail(it, 1);
+}
+
+function stRenderSubtabs(){
+  const L = document.body.classList.contains('lang-th');
+  const tabs = [
+    {k:'all', e:'All', t:'ทั้งหมด', n: ST_STATE.stash.length+ST_STATE.inventory.length+ST_STATE.trading.length},
+    {k:'stash', e:'Stash', t:'กระเป๋า', n: ST_STATE.stash.length},
+    {k:'inventory', e:'Inventory', t:'ช่องเก็บ', n: ST_STATE.inventory.length},
+    {k:'trading', e:'Trade Ship', t:'เรือค้า', n: ST_STATE.trading.length},
+    {k:'heroes', e:'Heroes', t:'ฮีโร่', n: ST_STATE.heroes.length},
+  ];
+  document.getElementById('st-subtabs').innerHTML = tabs.map(t=>
+    `<button class="st-subtab${t.k===ST_VIEW?' active':''}" onclick="stSetView('${t.k}')">${esc(L?t.t:t.e)} <span class="st-count">${t.n}</span></button>`
+  ).join('');
+}
+function stSetView(v){
+  ST_VIEW = v;
+  document.getElementById('st-itemview').style.display = v==='heroes'?'none':'block';
+  document.getElementById('st-heroview').style.display = v==='heroes'?'block':'none';
+  stRenderSubtabs();
+  if (v==='heroes') stRenderHeroes(); else stRenderGrid();
+}
+function stRenderFilters(){
+  const L = document.body.classList.contains('lang-th');
+  const types = [{k:'',e:'All',t:'ทั้งหมด'},{k:'MATERIAL',e:'Material',t:'วัสดุ'},{k:'EQUIPMENT',e:'Equipment',t:'อุปกรณ์'},{k:'ACCESSORY',e:'Accessory',t:'เครื่องประดับ'}];
+  document.getElementById('st-type-filter').innerHTML = types.map(t=>
+    `<button class="st-pill${t.k===ST_TYPE?' active':''}" onclick="stSetType('${t.k}')">${esc(L?t.t:t.e)}</button>`).join('');
+  // grades present in save
+  const present = new Set();
+  for (const it of [...ST_STATE.stash,...ST_STATE.inventory,...ST_STATE.trading]) if (it.cat) present.add(it.cat[2]);
+  const order = STASH_META.gradeOrder.filter(g=>present.has(g));
+  document.getElementById('st-grade-filter').innerHTML = order.map(g=>{
+    const col = STASH_META.gradeColors[g]||'#8b94a7';
+    const grTh = (typeof GRADE_TH!=='undefined' && GRADE_TH[g]) || g;
+    const on = ST_GRADES.has(g);
+    return `<button class="st-pill${on?' g-active':''}" style="${on?`background:${col}22;border-color:${col};color:${col}`:''}" onclick="stToggleGrade('${g}')">${esc(L?grTh:g)}</button>`;
+  }).join('');
+}
+function stSetType(k){ ST_TYPE=k; stRenderFilters(); stRenderGrid(); }
+function stToggleGrade(g){ if (ST_GRADES.has(g)) ST_GRADES.delete(g); else ST_GRADES.add(g); stRenderFilters(); stRenderGrid(); }
+
+function stRenderTop(){
+  const nw = stNetWorth();
+  document.getElementById('st-nw').textContent = stFmt(nw);
+  const dt = fmtPriceDate(PRICES_AT);
+  const L = document.body.classList.contains('lang-th');
+  document.getElementById('st-nw-sub').textContent = (Object.keys(PRICES).length? (L?'ราคา • อัพเดท '+dt : 'prices • '+dt) : (L?'กำลังโหลดราคา...':'loading prices...'));
+  const gold = ST_STATE.gold||0;
+  document.getElementById('st-gold').textContent = '🪙 ' + Number(gold).toLocaleString('en') + (L?' ทอง':' gold');
+}
+function stApplyLangText(){
+  // placeholder/option can't hold dual-span → set plain text per current lang
+  const th = document.body.classList.contains('lang-th');
+  const sr = document.getElementById('st-search');
+  if (sr) sr.placeholder = th ? sr.dataset.phTh : sr.dataset.phEn;
+  document.querySelectorAll('#st-sort option').forEach(o=>{ o.textContent = th ? o.dataset.th : o.dataset.en; });
+}
+function stRenderAll(){
+  if (!ST_STATE) return;
+  document.getElementById('st-empty').style.display='none';
+  document.getElementById('st-main').style.display='block';
+  stApplyLangText();
+  stRenderTop(); stRenderSubtabs(); stRenderFilters();
+  stSetView(ST_VIEW);
+}
+// recompute values when prices (re)load
+function stashOnPrices(){ if (ST_STATE) { stRenderTop(); if (ST_VIEW==='heroes') stRenderHeroes(); else stRenderGrid(); } }
+
+function stInit(){
+  const drop = document.getElementById('st-drop'), fileIn = document.getElementById('st-file');
+  if (!drop) return;
+  drop.onclick = ()=>fileIn.click();
+  fileIn.onchange = e=>{ if (e.target.files[0]) stHandleFile(e.target.files[0]); };
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.remove('drag'); }));
+  drop.addEventListener('drop', e=>{ if (e.dataTransfer.files[0]) stHandleFile(e.dataTransfer.files[0]); });
+  document.getElementById('st-reload').onclick = ()=>fileIn.click();
+  document.getElementById('st-clear').onclick = stClear;
+  document.getElementById('st-detail-bg').onclick = stCloseDetail;
+  const sr = document.getElementById('st-search');
+  sr.oninput = e=>{ ST_SEARCH = e.target.value.trim().toLowerCase(); stRenderGrid(); };
+  document.getElementById('st-tradable').onchange = e=>{ ST_TRADABLE=e.target.checked; stRenderGrid(); };
+  document.getElementById('st-sort').onchange = e=>{ ST_SORT=e.target.value; stRenderGrid(); };
+  stApplyLangText();
+  stLoadCached();
+}
+if (document.readyState!=='loading') stInit(); else document.addEventListener('DOMContentLoaded', stInit);
+"""
+
+JS_STASH_FILLED = (JS_STASH
+    .replace('__STASH_CAT__', STASH_CAT_JSON)
+    .replace('__STASH_META__', STASH_META_JSON))
+JS_WITH_GEAR = JS_WITH_GEAR.replace('// ── STASH_INJECT ──', JS_STASH_FILLED)
+
 # ── Assemble & write ──────────────────────────────────────────────────────────
 EFFECT_OPTIONS = ''.join(
     f'<div class="eff-opt" data-v="{_esc_min(s)}" onclick="pickEff(this)">{gb(s, _stat_th.get(s, s))}</div>'
@@ -3902,7 +4478,7 @@ EFFECT_OPTIONS = ''.join(
 TAB1_START_FILLED = TAB1_START.replace('__EFFECT_OPTIONS__', EFFECT_OPTIONS)
 html = (HEAD + TOPBAR
         + TAB1_START_FILLED + str(COUNT) + TAB1_MID + CARDS_HTML + TAB1_END
-        + TAB4 + TAB_CRAFT + TAB3 + TAB_FARM + TAB6_RUNES + TAB5 + MODAL + JS_WITH_GEAR)
+        + TAB4 + TAB_CRAFT + TAB3 + TAB_FARM + TAB6_RUNES + TAB5 + STASH_TAB + MODAL + JS_WITH_GEAR)
 
 out = f'{BASE}/index.html'
 with open(out, 'w', encoding='utf-8') as f:
