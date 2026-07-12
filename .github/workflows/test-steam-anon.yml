@@ -1,0 +1,51 @@
+# ทดสอบชั่วคราว: GitHub-hosted runner ยิง Steam Market แบบ anon ผ่าน curl ได้ไหม
+# (ข้อสรุปเดิมว่า datacenter IP โดน 429 ทุก request ทดสอบด้วย Python+login —
+#  ตอนนี้รู้แล้วว่า Steam กรอง TLS fingerprint ของ Python ด้วย จึงต้องเทสต์ใหม่ด้วย curl)
+# ผ่านทั้ง 3 ข้อ → ย้ายงานราคากลับ GitHub-hosted เลิกใช้ self-hosted nb-march ได้
+name: test-steam-anon
+on: workflow_dispatch
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: "1) search/render anon currency=1 (USD) — เส้นทางหลักของ fetch ตัวใหม่"
+        run: |
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          ok=0
+          for start in 0 10 20 30 40; do
+            code=$(curl -s -o /tmp/r.json -w '%{http_code}' -A "$UA" \
+              "https://steamcommunity.com/market/search/render/?norender=1&appid=3678970&currency=1&sort_column=popular&sort_dir=desc&count=10&start=$start")
+            echo "page start=$start → HTTP $code : $(head -c 120 /tmp/r.json)"
+            [ "$code" = "200" ] && ok=$((ok+1))
+            sleep 3
+          done
+          echo "== search/render ผ่าน $ok/5 หน้า =="
+          [ "$ok" -ge 4 ]   # ยอมพลาดได้ 1 หน้า
+
+      - name: "2) priceoverview anon THB — ใช้ calibrate เรต Valve"
+        run: |
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          for cur in 1 14; do
+            code=$(curl -s -o /tmp/p.json -w '%{http_code}' -A "$UA" \
+              "https://steamcommunity.com/market/priceoverview/?appid=3678970&currency=$cur&market_hash_name=Amber%20Gem")
+            echo "currency=$cur → HTTP $code : $(cat /tmp/p.json)"
+            [ "$code" = "200" ] || exit 1
+            sleep 4
+          done
+
+      - name: "3) ยิงยาว 20 หน้า delay 2s — จำลองโหลดจริง (~75 หน้า/รอบ)"
+        run: |
+          UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          fail=0
+          for i in $(seq 0 19); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -A "$UA" \
+              "https://steamcommunity.com/market/search/render/?norender=1&appid=3678970&currency=1&sort_column=popular&sort_dir=desc&count=10&start=$((i*10))")
+            printf '%s ' "$code"
+            [ "$code" != "200" ] && fail=$((fail+1))
+            sleep 2
+          done
+          echo ""
+          echo "== fail $fail/20 =="
+          [ "$fail" -le 2 ]
