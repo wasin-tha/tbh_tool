@@ -47,15 +47,16 @@ Co-Authored-By line: `Claude Opus 4.8 <noreply@anthropic.com>`
 - **★ auto-refresh ราคาในหน้าที่เปิดค้าง** (`loadPrices(announce)`): poll `prices.json` ทุก 10 นาที (เฉพาะ `visibilityState==='visible'`) + ดึงใหม่ตอน `visibilitychange` (กลับมาที่แท็บ) → อัปเฉพาะเมื่อ `_at` เปลี่ยน (ไม่งั้นไม่แตะ DOM) + toast เล็ก "ราคาอัปเดตแล้ว" (`showPriceToast`)
 
 ### GitHub Actions — อัปเดตราคาอัตโนมัติ (`.github/workflows/update-prices.yml`)
-- trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 1 ชม.** (`11 * * * *` — ตรงเวลากว่า GitHub cron) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
+- trigger = **`workflow_dispatch`** ยิงจาก **cron-job.org ทุก 10 นาที** (`*/10 * * * *` — เปลี่ยนจากรายชั่วโมง 2026-07-12 หลังย้าย GitHub-hosted) + กด Run เองได้ (GitHub schedule comment ไว้ เปิดกลับได้)
+  - ⚠️ **อย่าถี่กว่า 10 นาที** — GitHub Pages มี soft limit ~10 builds/ชม. (ทุก 5 นาที = 12 push/ชม. จะโดนดองคิว) และ JS ฝั่งเว็บ poll `prices.json` ทุก 10 นาทีอยู่แล้ว ถี่กว่านี้คนดูก็ไม่เห็นเร็วขึ้น
 - ทำ: fetch_prices.py → gen_tbh.py (เขียน `index.html`+`prices.json` ที่ repo root ตรงๆ) → commit — **ทั้ง run ~15 วินาที**
 - **★★ รันบน `ubuntu-latest` (GitHub-hosted) — ย้ายกลับ 2026-07-12** หลังพิสูจน์ว่า "Steam บล็อก IP datacenter" ที่เชื่อกัน (2026-07-09) จริงๆ คือ **Steam กรอง TLS fingerprint ของ Python สำหรับ anon request** (Python โดน 429 ทุกนัดแม้จาก IP บ้าน แต่ curl ผ่านตลอด ทั้งจากบ้านและ GitHub) → fetch เปลี่ยนเป็น anon ผ่าน curl แล้วไม่ต้องพึ่ง IP บ้าน/login อีก
-- **Secrets ที่ใช้เหลือ `DISCORD_WEBHOOK` ตัวเดียว** — `STEAM_USER`/`STEAM_PASS`/`STEAM_COOKIE` ไม่ใช้แล้ว (ลบจาก repo settings ได้), `steam_login.py` ถูกลบออกจาก repo (อยู่ใน git history ถ้าต้องขุด)
+- **Secrets เหลือ `DISCORD_WEBHOOK` ตัวเดียว** — `STEAM_USER`/`STEAM_PASS`/`STEAM_COOKIE`/`GH_PAT` **ลบออกจาก repo settings แล้ว (2026-07-12)**, `steam_login.py` ถูกลบออกจาก repo (อยู่ใน git history ถ้าต้องขุด); บัญชี Steam กลับไปเปิด Steam Guard ได้แล้ว (ไม่มีอะไร login อีก)
 - step เป็น bash ล้วน, ไม่มี pip dependency (fetch ใช้ curl + stdlib), `timeout-minutes: 15`, `actions/checkout@v5`
 - fetch fail (exit 2/3) → step gen/commit **ถูก skip** → ไม่ commit (เว็บใช้ราคาเดิม ไม่มีราคาครึ่งๆ) → cron รอบหน้าลองใหม่เอง = **self-healing**
 - ถ้า fail → **ยิง Discord เฉพาะเมื่อพัง 4 ครั้งติด** (เช็ค 3 run ก่อนหน้าผ่าน GitHub API, ต้องมี `permissions: actions:read`) — นับ conclusion **ไม่ใช่ success** (กัน run ที่โดน `cancelled` รีเซ็ตตัวนับ). step นี้เขียนใหม่เป็น bash+jq 2026-07-12 — ของเดิม (PS 5.1 บน self-hosted) มีบั๊ก encoding ข้อความไทย → parse error **ไม่เคยส่งจริงเลย**
 - Public repo = Actions ฟรีไม่จำกัด
-- **runner self-hosted `nb-march` เดิม (โน้ตบุ๊ก NB-MARCH): ปิดแล้ว 2026-07-12** — service `actions.runner.wasin-tha-tbh_tool.nb-march` ถูก stop + ตั้ง start=disabled (กันเด้งกลับตอนรีบูต) ตามคำสั่งผู้ใช้; ไฟล์ยังอยู่ที่ `C:\March\actions-runner` เผื่อ rollback (วิธีรีโมทดู memory `reference_smb_psexec_remote`)
+- **runner self-hosted `nb-march` เดิม (โน้ตบุ๊ก NB-MARCH): ปิดแล้ว 2026-07-12** — service `actions.runner.wasin-tha-tbh_tool.nb-march` ถูก stop + ตั้ง start=disabled (กันเด้งกลับตอนรีบูต) ตามคำสั่งผู้ใช้; ไฟล์ยังอยู่ที่ `C:\March\actions-runner` และ**ยังลงทะเบียนค้างใน repo settings (สถานะ offline) โดยตั้งใจ** — เผื่อ rollback แค่สั่ง start service กลับ (วิธีรีโมทดู memory `reference_smb_psexec_remote`)
 - มี `update_prices.bat` (local, double-click, gitignore แล้ว) = ตัวสำรอง: fetch → gen → `git add index.html prices.json` → `git pull --rebase` → push — env STEAM_* ในนั้นไม่จำเป็นแล้ว (fetch เป็น anon), ใช้ **full path python** (เลี่ยง Store stub) + ต้องเป็น **CRLF**; รันจากเครื่องไทยจะได้ ฿ ตรงจาก Steam เลย
 
 ## Data sources (taskbarhero.wiki)
